@@ -5,7 +5,7 @@ Este repositorio contiene los conjuntos de datos utilizados en nuestro proyecto 
 ## 📁 Estructura del Repositorio
 
 ```
-├── data/
+├── datos/
 ├── notebooks/               
 ├── scripts/                 
 ├── docs/        
