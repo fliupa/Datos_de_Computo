@@ -1,0 +1,61 @@
+ID_Producto,Nombre_Producto,Categoria,Precio,Stock
+1,Laptop Gamer X1,Electrónica,18999.99,25
+2,Smartphone Galaxy A55,Electrónica,8999.50,40
+3,Tablet Pro 10,Electrónica,6599.00,30
+4,Audífonos Inalámbricos,Electrónica,1299.99,60
+5,Smartwatch FitPlus,Electrónica,2499.75,35
+6,Cafetera Express,Hogar,3499.00,20
+7,Batidora Profesional,Hogar,1899.50,28
+8,Licuadora 2L,Hogar,899.99,45
+9,Microndas Digital,Hogar,2799.00,15
+10,Aspiradora Robot,Hogar,5599.99,12
+11,Zapatos Deportivos,Ropa,1299.00,50
+12,Jeans Slim Fit,Ropa,799.50,75
+13,Camisa Formal,Ropa,599.99,60
+14,Vestido Casual,Ropa,899.00,40
+15,Chamarra de Piel,Ropa,4599.00,18
+16,Pantalón Deportivo,Ropa,649.50,55
+17,Libro "El Principito",Libros,299.00,100
+18,Novela Best Seller,Libros,459.50,80
+19,Cuaderno Profesional,Libros,199.99,120
+20,Set de Plumas,Libros,149.50,200
+21,Pelota de Fútbol,Deportes,899.00,30
+22,Raqueta de Tenis,Deportes,2199.50,25
+23,Bicicleta Montaña,Deportes,8999.00,8
+24,Tenis Running,Deportes,1799.00,22
+25,Mochila Camping,Deportes,1299.50,35
+26,Sartén Antiadherente,Cocina,699.99,40
+27,Juego de Cuchillos,Cocina,1599.00,25
+28,Olla Express,Cocina,2399.50,18
+29,Tostador Digital,Cocina,899.00,30
+30,Refrigerador 14p,Hogar,12999.00,5
+31,Lavadora Automática,Hogar,8999.50,7
+32,Televisor 55 4K,Electrónica,14999.00,10
+33,Consola Videojuegos,Electrónica,7999.99,15
+34,Videojuego FIFA 25,Electrónica,1399.00,40
+35,Cámara Digital,Electrónica,4599.50,20
+36,Silla Oficina,Muebles,2899.00,15
+37,Escritorio Ejecutivo,Muebles,4599.99,12
+38,Sofá 3 Plazas,Muebles,12999.00,6
+39,Mesa Centro,Muebles,3599.50,10
+40,Cama Matrimonial,Muebles,8999.00,8
+41,Shampoo Anticaída,Belleza,299.50,80
+42,Crema Facial,Belleza,459.00,65
+43,Perfume Elegante,Belleza,1299.00,25
+44,Maquillaje Profesional,Belleza,899.50,30
+45,Cepillo Cabello,Belleza,199.99,100
+46,Juguete Educativo,Juguetes,599.00,45
+47,Peluche Grande,Juguetes,399.50,60
+48,Set Construcción,Juguetes,1299.00,25
+49,Pista de Carros,Juguetes,1899.50,18
+50,Muñeca Interactiva,Juguetes,799.00,35
+51,Aceite Oliva Extra,Alimentos,189.50,90
+52,Arroz Integral,Alimentos,45.99,150
+53,Café Gourmet,Alimentos,299.00,70
+54,Galletas Integrales,Alimentos,89.50,120
+55,Miel Natural,Alimentos,159.00,85
+56,Vino Tinto,Bebidas,459.00,50
+57,Jugo Natural,Bebidas,39.50,200
+58,Cerveza Artesanal,Bebidas,89.00,100
+59,Agua Mineral,Bebidas,25.00,300
+60,Refresco Cola,Bebidas,35.50,180

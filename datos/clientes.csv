@@ -1,0 +1,51 @@
+ID_Cliente,Nombre,Email,Telefono,Ciudad
+1,Ana García,anita.garcia.95@gmail.com,5512345678,Ciudad de México
+2,Carlos López,lobo_carlos_lopez@hotmail.com,3312345678,Guadalajara
+3,María Hernández,mary.hdz.mty@outlook.com,8112345678,Monterrey
+4,Juan Martínez,juancho.martinez.94@yahoo.com.mx,2221234567,Puebla
+5,Laura Díaz,laurita.diaz.rockera@live.com.mx,6641234567,Tijuana
+6,Rodrigo Silva,rodri.silva.corredor@icloud.com,4771234567,León
+7,Isabel Flores,isita.flores.88@gmail.com,9981234567,Cancún
+8,Miguel Torres,mike.torres.qro@hotmail.com,4421234567,Querétaro
+9,Elena Castro,ele.castro.yucatan@outlook.es,9991234567,Mérida
+10,Diego Ruiz,dieguito.ruiz.gamer@gmail.com,4491234567,Aguascalientes
+11,Sofía Mendoza,sofimendoza.7@gmail.com,6621234567,Hermosillo
+12,Pablo Vargas,elvargas.morelia@yahoo.com,4431234567,Morelia
+13,Adriana Romero,adri.romero.toluca@live.com,7221234567,Toluca
+14,Fernando Morales,fer.morales.chih@hotmail.com,6141234567,Chihuahua
+15,Carolina Soto,carosoto.veracruz@outlook.com,2291234567,Veracruz
+16,Ricardo Ortega,ricky.ortega.tampico@gmail.com,8331234567,Tampico
+17,Patricia Reyes,paty.reyes.culichi@yahoo.com.mx,6671234567,Culiacán
+18,Oscar Guzmán,ozzy.guzman.maz@gmail.com,6691234567,Mazatlán
+19,Gabriela Núñez,gaby.nunez.aca@hotmail.com,7441234567,Acapulco
+20,José Campos,pepe.campos.saltillo@live.com.mx,8441234567,Saltillo
+21,Daniela Ríos,dany.rios.dgo@icloud.com,6181234567,Durango
+22,Arturo Medina,art.medina.campeche@outlook.com,9811234567,Campeche
+23,Verónica Cruz,vero.cruz.oax@gmail.com,9511234567,Oaxaca
+24,Roberto Salazar,beto.salazar.zac@yahoo.com,4921234567,Zacatecas
+25,Liliana Paredes,lili.paredes.colima@hotmail.com,3121234567,Colima
+26,Eduardo León,eduardo.leon.tlax@live.com,2461234567,Tlaxcala
+27,Brenda Mora,bren.mora.juarez@gmail.com,6561234567,Ciudad Juárez
+28,Sergio Rojas,checo.rojas.villa@outlook.es,9931234567,Villahermosa
+29,Natalia Vega,nata.vega.chetumal@icloud.com,9831234567,Chetumal
+30,Francisco Méndez,pancho.mendez.lapaz@yahoo.com.mx,6121234567,La Paz
+31,Claudia Herrera,clau.herrera.torreon@hotmail.com,8711234567,Torreón
+32,Antonio Luna,tono.luna.celaya@gmail.com,4611234567,Celaya
+33,Mónica Cervantes,moni.cervantes.irapuato@outlook.com,4621234567,Irapuato
+34,Raúl Espinoza,ruly.espinoza.manzanillo@live.com,3141234567,Manzanillo
+35,Teresa Contreras,teresita.contreras.ensenada@icloud.com,6461234567,Ensenada
+36,Javier Ponce,javo.ponce.obregon@gmail.com,6441234567,Ciudad Obregón
+37,Gloria Miranda,glo.miranda.nogales@hotmail.com,6311234567,Nogales
+38,Manuel Santana,manu.santana.mochis@yahoo.com.mx,6681234567,Los Mochis
+39,Alejandra Bravo,ale.bravo.matamoros@outlook.com,8681234567,Matamoros
+40,Alberto Valencia,beto.valencia.reynosa@live.com,8991234567,Reynosa
+41,Lucia Zamora,lulu.zamora.coatza@gmail.com,9211234567,Coatzacoalcos
+42,Ramón Delgado,ramon.delgado.pachuca@hotmail.com,7711234567,Pachuca
+43,Silvia Navarro,sil.navarro.cuerna@icloud.com,7771234567,Cuernavaca
+44,Héctor Márquez,hector.marquez.tepic@outlook.es,3111234567,Tepic
+45,Yolanda Rangel,yory.rangel.tuxtla@yahoo.com,9611234567,Tuxtla Gutiérrez
+46,Víctor Correa,vic.correa.xalapa@gmail.com,2281234567,Xalapa
+47,Olga Serrano,olga.serrano.slp@hotmail.com,4441234567,San Luis Potosí
+48,Rubén Vázquez,ruben.vazquez.gomez@live.com.mx,8711234567,Gómez Palacio
+49,Angélica Peña,angie.pena.urua@outlook.com,4521234567,Uruapan
+50,Marcos Cordero,marcos.cordero.victoria@gmail.com,8341234567,Ciudad Victoria
