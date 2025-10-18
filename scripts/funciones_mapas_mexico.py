@@ -6,8 +6,6 @@ Utiliza el archivo admin1.geojson para generar visualizaciones geográficas
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
-import folium
-import contextily as ctx
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
@@ -30,8 +28,8 @@ def cargar_geojson_mexico(ruta_geojson):
         if gdf_mexico.crs != 'EPSG:4326':
             gdf_mexico = gdf_mexico.to_crs('EPSG:4326')
         
-        print(f" GeoJSON cargado exitosamente: {len(gdf_mexico)} estados/regiones")
-        print(f" Columnas disponibles: {list(gdf_mexico.columns)}")
+        print(f" [OK] GeoJSON cargado exitosamente: {len(gdf_mexico)} estados/regiones")
+        print(f" [COLUMNAS] Columnas disponibles: {list(gdf_mexico.columns)}")
         
         return gdf_mexico
     
@@ -53,20 +51,13 @@ def crear_mapa_base_mexico(gdf_mexico, titulo="Mapa de México", figsize=(12, 8)
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     
-    # Dibujar el mapa base con colores más vibrantes
-    gdf_mexico.plot(ax=ax, color='#3498DB', edgecolor='#2C3E50', linewidth=1.0, alpha=0.8)
+    # Dibujar el mapa base con un estilo sobrio
+    gdf_mexico.plot(ax=ax, color='#eeeeee', edgecolor='#b0b3b8', linewidth=0.6, alpha=1.0)
     
-    # Configurar el mapa con estilo más vibrante
-    ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    
-    # Remover los ticks para un aspecto más limpio con colores vibrantes
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    
-    # Agregar grid sutil con color vibrante
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
-    ax.set_facecolor('#F8F9FA')  # Fondo ligeramente gris para contraste
+    # Configuración minimalista: título simple, sin ejes ni grid
+    ax.set_title(titulo, fontsize=16)
+    ax.set_axis_off()
+    ax.set_facecolor('white')
     
     return fig, ax
 
@@ -111,29 +102,21 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
     # Asignar valores a cada estado basado en su región
     gdf_plot['valor'] = gdf_plot['region'].map(valores_region).fillna(0)
     
-    # Crear el mapa coroplético con colores más vibrantes
-    gdf_plot.plot(column='valor', ax=ax, cmap=cmap, legend=True, 
-                  edgecolor='white', linewidth=1.2, alpha=0.9,
-                  legend_kwds={'label': columna_valor, 'orientation': 'horizontal', 'shrink': 0.8})
+    # Crear el mapa coroplético con estilo sobrio
+    gdf_plot.plot(
+        column='valor', ax=ax, cmap=cmap, legend=False,
+        edgecolor='#b0b3b8', linewidth=0.6, alpha=0.85
+    )
     
-    # Configurar el mapa con estilo más vibrante
-    ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
-    ax.set_facecolor('#F8F9FA')  # Fondo ligeramente gris para contraste
-    
-    # Agregar leyenda con estilo vibrante
-    ax.text(0.02, 0.98, 'Tamaño del círculo = Volumen de ventas', 
-            transform=ax.transAxes, fontsize=12, verticalalignment='top', fontweight='bold',
-            bbox=dict(boxstyle='round,pad=0.5', facecolor='#FFFFFF', 
-                     edgecolor='#3498DB', linewidth=2, alpha=0.95), color='#2C3E50')
+    # Configuración minimalista
+    ax.set_title(titulo, fontsize=16)
+    ax.set_axis_off()
+    ax.set_facecolor('white')
     
     return fig, ax
 
 def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principales Ciudades por Ventas", 
-                                  figsize=(14, 10), top_n=10):
+                                  figsize=(14, 10), top_n=10, size_range=(80, 600)):
     """
     Crea un mapa de México con marcadores para las principales ciudades
     
@@ -149,9 +132,8 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     
-    # Dibujar el mapa base
-    # Dibujar el mapa base con colores más vibrantes
-    gdf_mexico.plot(ax=ax, color='#ECF0F1', edgecolor='#34495E', linewidth=1.0, alpha=0.8)
+    # Dibujar el mapa base con estilo sobrio
+    gdf_mexico.plot(ax=ax, color='#eeeeee', edgecolor='#b0b3b8', linewidth=0.6, alpha=1.0)
     
     # Coordenadas aproximadas de ciudades principales de México
     coordenadas_ciudades = {
@@ -180,52 +162,49 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     # Filtrar top ciudades
     top_ciudades = datos_ciudades.head(top_n)
     
-    # Colores vibrantes para los marcadores
-    colores_vibrantes = ['#E74C3C', '#9B59B6', '#3498DB', '#1ABC9C', '#F39C12', 
-                        '#E67E22', '#2ECC71', '#F1C40F', '#E91E63', '#FF5722']
+    # Color único para marcadores minimalistas
+    color_marcador = '#1f77b4'
     
     # Agregar marcadores para las ciudades con colores más vibrantes
+    # Determinar columna de valor y máximo para escalar tamaños
+    col_valor = 'Total_Ventas' if 'Total_Ventas' in top_ciudades.columns else (
+        'Ingresos_Total' if 'Ingresos_Total' in top_ciudades.columns else None
+    )
+    max_valor = 1 if col_valor is None else max(1, float(top_ciudades[col_valor].max()))
+
     for i, (_, ciudad) in enumerate(top_ciudades.iterrows()):
         nombre_ciudad = ciudad['Ciudad']
         if nombre_ciudad in coordenadas_ciudades:
             lon, lat = coordenadas_ciudades[nombre_ciudad]
-            valor = ciudad.get('Total_Ventas', ciudad.get('Ingresos_Total', 0))
+            valor = float(ciudad.get('Total_Ventas', ciudad.get('Ingresos_Total', 0)))
             
-            # Tamaño del marcador proporcional al valor
-            size = max(80, min(600, valor / max(top_ciudades.get('Total_Ventas', top_ciudades.get('Ingresos_Total', [1]))) * 400))
+            # Tamaño del marcador proporcional al valor usando interpolación
+            size = float(np.interp(valor, [0, max_valor], [size_range[0], size_range[1]]))
             
-            # Color vibrante basado en el ranking
-            color = colores_vibrantes[i % len(colores_vibrantes)]
-            
-            ax.scatter(lon, lat, s=size, c=color, alpha=0.8, edgecolors='white', linewidth=3, zorder=5)
-            ax.annotate(f'{nombre_ciudad}\n${valor:,.0f}', xy=(lon, lat), 
-                       xytext=(5, 5), textcoords='offset points',
-                       fontsize=10, fontweight='bold', color='#2C3E50',
-                       bbox=dict(boxstyle='round,pad=0.4', facecolor='#FFFFFF', 
-                               edgecolor=color, linewidth=2, alpha=0.95))
+            # Marcador minimalista sin anotaciones ni cajas
+            ax.scatter(lon, lat, s=size, c=color_marcador, alpha=0.7, edgecolors='white', linewidth=1.5, zorder=5)
     
-    # Configurar el mapa con estilo más vibrante
-    ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
-    ax.set_facecolor('#F8F9FA')  # Fondo ligeramente gris para contraste
-    
-    # Crear leyenda para los marcadores
-    legend_elements = []
-    for i in range(min(len(top_ciudades), len(colores_vibrantes))):
-        legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
-                                        markerfacecolor=colores_vibrantes[i], 
-                                        markersize=10, label=f'Top {i+1}'))
-    
-    if legend_elements:
-        ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1, 1),
-                 frameon=True, fancybox=True, shadow=True, fontsize=10)
+    # Configuración minimalista: título simple, sin ejes, sin leyendas
+    ax.set_title(titulo, fontsize=16)
+    ax.set_axis_off()
+    ax.set_facecolor('white')
     
     return fig, ax
 
-def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None):
+def crear_mapa_interactivo_folium(
+    gdf_mexico,
+    datos_ventas=None,
+    columna_region=None,
+    columna_valor=None,
+    color_map: str = 'plasma',
+    add_minimap: bool = False,
+    add_fullscreen: bool = False,
+    add_measure: bool = False,
+    add_mousepos: bool = False,
+    show_circles: bool = False,
+    minimal: bool = True,
+    show_legend: bool = False
+):
     """
     Crea un mapa interactivo de México usando Folium
     
@@ -238,14 +217,33 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     Returns:
         folium.Map: Mapa interactivo de Folium
     """
+    try:
+        import folium
+        from branca.colormap import LinearColormap
+        from folium import plugins
+    except ImportError:
+        print(" [AVISO] Folium no está instalado; omitiendo mapa interactivo. Instale con: pip install folium")
+        return None
     # Calcular el centro de México
     bounds = gdf_mexico.total_bounds
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
     
     # Crear el mapa base
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, 
-                   tiles='OpenStreetMap')
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, tiles=('CartoDB Positron' if minimal else 'OpenStreetMap'))
+    # Capas base adicionales y control de capas (evitar sobrecarga visual en modo minimal)
+    if not minimal:
+        folium.TileLayer('CartoDB Positron', name='Positron').add_to(m)
+        folium.TileLayer(
+            'Stamen Terrain', 
+            name='Terrain', 
+            attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+        ).add_to(m)
+        folium.TileLayer(
+            'Stamen Toner', 
+            name='Toner', 
+            attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+        ).add_to(m)
     
     # Agregar los estados al mapa
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
@@ -259,22 +257,32 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
             'south_mexico': ['GUERRERO', 'OAXACA', 'CHIAPAS', 'VERACRUZ', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO', 'MICHOACÁN', 'COLIMA', 'JALISCO', 'NAYARIT', 'SINALOA', 'DURANGO']
         }
         
-        # Función para obtener color basado en el valor con paleta más vibrante
+        # Construir colormap continuo para una apariencia más profesional
+        vals = list(valores_region.values())
+        vmin, vmax = (min(vals) if vals else 0), (max(vals) if vals else 1)
+        # Define paletas conocidas (aproximadas) por nombre
+        palettes = {
+            'plasma': ['#0c0887', '#5601a4', '#8b02a8', '#b5367a', '#e16462', '#f89441', '#fccf2d'],
+            'viridis': ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
+            'inferno': ['#000004', '#1f0c48', '#741a6d', '#b63679', '#ed6925', '#fcffa4'],
+            'magma': ['#000004', '#1c1044', '#5e1f78', '#b63679', '#fb8761', '#fcfdbf'],
+            'cividis': ['#00224e', '#2c5c8a', '#3a7f88', '#76a365', '#d7d566']
+        }
+        # Paleta sobria para modo minimal
+        colors_minimal = ['#eeeeee', '#d9d9d9', '#bfbfbf', '#a6a6a6', '#8c8c8c']
+        colors = colors_minimal if minimal else palettes.get(color_map, ['#3498DB', '#F1C40F', '#E74C3C', '#8E44AD'])
+        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax)
+        cmap.caption = columna_valor
+
         def get_color(entidad):
             for region, estados in mapeo_regiones.items():
                 if entidad in estados:
-                    valor = valores_region.get(region, 0)
-                    if valor > 35000:
-                        return '#8E44AD'  # Púrpura vibrante
-                    elif valor > 25000:
-                        return '#E74C3C'  # Rojo vibrante
-                    elif valor > 20000:
-                        return '#F39C12'  # Naranja vibrante
-                    else:
-                        return '#3498DB'  # Azul vibrante
-            return '#95A5A6'  # Gris neutro
+                    valor = float(valores_region.get(region, 0))
+                    return cmap(valor)
+            return '#95A5A6'
         
-        # Agregar cada estado al mapa
+        # Capa GeoJson con highlight en hover
+        features = []
         for _, row in gdf_mexico.iterrows():
             entidad = row['ENTIDAD']
             color = get_color(entidad)
@@ -286,7 +294,7 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                     region = reg
                     break
             
-            valor = valores_region.get(region, 0)
+            valor = float(valores_region.get(region, 0))
             
             # Obtener información adicional del estado
             capital = row.get('CAPITAL', 'N/A')
@@ -326,21 +334,48 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
             </div>
             """
             
-            folium.GeoJson(
+            # Estilos más sobrios en modo minimal
+            border_color = '#B0B3B8' if minimal else '#2C3E50'
+            border_weight = 0.6 if minimal else 1.0
+            fill_opacity = 0.7 if minimal else 0.85
+
+            gj = folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x, color=color: {
                     'fillColor': color,
-                    'color': '#34495E',
-                    'weight': 0.8,
-                    'fillOpacity': 0.8,
+                    'color': border_color,
+                    'weight': border_weight,
+                    'fillOpacity': fill_opacity,
                 },
-                popup=folium.Popup(popup_html, max_width=300),
+                highlight_function=lambda x: {
+                    'weight': (1.2 if minimal else 2.0),
+                    'color': ('#212121' if minimal else '#000000'),
+                    'fillOpacity': (0.8 if minimal else 0.95),
+                },
+                popup=(None if minimal else folium.Popup(popup_html, max_width=300)),
                 tooltip=folium.Tooltip(
-                    tooltip_html, 
-                    sticky=True, 
+                    (f"{entidad} — ${valor:,.0f}" if minimal else tooltip_html),
+                    sticky=True,
                     style="background-color: transparent; border: none; box-shadow: none;"
                 )
-            ).add_to(m)
+            )
+            gj.add_to(m)
+
+            # Marcador por centroide proporcional al valor (omitido en minimal)
+            effective_show_circles = show_circles and (not minimal)
+            if effective_show_circles:
+                centroid = row['geometry'].centroid
+                radius = 5 + 15 * ((valor - vmin) / (vmax - vmin + 1e-9))
+                folium.CircleMarker(
+                    location=[centroid.y, centroid.x],
+                    radius=float(radius),
+                    color='#FFFFFF',
+                    weight=2,
+                    fill=True,
+                    fill_color=color,
+                    fill_opacity=0.9,
+                    tooltip=f"{entidad}: ${valor:,.0f}"
+                ).add_to(m)
     else:
         # Mapa simple sin datos de ventas - también con tooltips mejorados
         for _, row in gdf_mexico.iterrows():
@@ -380,22 +415,53 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
             </div>
             """
             
-            folium.GeoJson(
+            # Estilos sobrios si es minimal
+            border_color = '#B0B3B8' if minimal else '#34495E'
+            border_weight = 0.6 if minimal else 0.8
+            fill_color = '#e5e5e5' if minimal else '#85C1E9'
+
+            gj = folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x: {
-                    'fillColor': '#85C1E9',
-                    'color': '#34495E',
-                    'weight': 0.8,
+                    'fillColor': fill_color,
+                    'color': border_color,
+                    'weight': border_weight,
                     'fillOpacity': 0.7,
                 },
-                popup=folium.Popup(popup_html, max_width=300),
+                popup=(None if minimal else folium.Popup(popup_html, max_width=300)),
                 tooltip=folium.Tooltip(
-                    tooltip_html, 
+                    (entidad if minimal else tooltip_html), 
                     sticky=True, 
                     style="background-color: transparent; border: none; box-shadow: none;"
                 )
+            )
+            gj.add_to(m)
+
+    # Añadir colormap como leyenda si está disponible
+    try:
+        if (datos_ventas is not None and columna_region and columna_valor) and show_legend and (not minimal):
+            cmap.add_to(m)
+    except Exception:
+        pass
+
+    # Plugins opcionales (evitar exceso visual en modo minimal)
+    if not minimal:
+        if add_fullscreen:
+            plugins.Fullscreen(position='topright').add_to(m)
+        if add_minimap:
+            plugins.MiniMap(toggle_display=True).add_to(m)
+        if add_measure:
+            plugins.MeasureControl(position='topleft').add_to(m)
+        if add_mousepos:
+            plugins.MousePosition(
+                position='bottomright',
+                separator=' | ',
+                prefix='Coords',
+                lat_formatter='function(num) {return L.Util.formatNum(num, 5);}',
+                lng_formatter='function(num) {return L.Util.formatNum(num, 5);}'
             ).add_to(m)
-    
+        # Añadir control de capas
+        folium.LayerControl(position='topright', collapsed=False).add_to(m)
     return m
 
 def guardar_mapa_como_imagen(fig, nombre_archivo, dpi=300, bbox_inches='tight'):
@@ -411,16 +477,30 @@ def guardar_mapa_como_imagen(fig, nombre_archivo, dpi=300, bbox_inches='tight'):
     try:
         fig.savefig(nombre_archivo, dpi=dpi, bbox_inches=bbox_inches, 
                    facecolor='white', edgecolor='none')
-        print(f" Mapa guardado como: {nombre_archivo}")
+        print(f" [OK] Mapa guardado como: {nombre_archivo}")
     except Exception as e:
-        print(f"Error al guardar el mapa: {e}")
+        print(f" [ERROR] Error al guardar el mapa: {e}")
+
+def guardar_mapa_interactivo(m, nombre_archivo):
+    """
+    Guarda un mapa interactivo de Folium como archivo HTML
+    
+    Args:
+        m (folium.Map): Mapa interactivo
+        nombre_archivo (str): Ruta del archivo de salida (HTML)
+    """
+    try:
+        m.save(nombre_archivo)
+        print(f" Mapa interactivo guardado como: {nombre_archivo}")
+    except Exception as e:
+        print(f" Error al guardar el mapa interactivo: {e}")
 
 # Función de ejemplo para demostrar el uso
 def ejemplo_uso_mapas():
     """
     Función de ejemplo que demuestra cómo usar las funciones de mapas
     """
-    print("EJEMPLO DE USO DE FUNCIONES DE MAPAS DE MÉXICO")
+    print("  EJEMPLO DE USO DE FUNCIONES DE MAPAS DE MÉXICO")
     print("=" * 60)
     
     # Ruta al archivo GeoJSON
