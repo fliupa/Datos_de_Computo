@@ -30,13 +30,13 @@ def cargar_geojson_mexico(ruta_geojson):
         if gdf_mexico.crs != 'EPSG:4326':
             gdf_mexico = gdf_mexico.to_crs('EPSG:4326')
         
-        print(f"✅ GeoJSON cargado exitosamente: {len(gdf_mexico)} estados/regiones")
-        print(f"📍 Columnas disponibles: {list(gdf_mexico.columns)}")
+        print(f" GeoJSON cargado exitosamente: {len(gdf_mexico)} estados/regiones")
+        print(f" Columnas disponibles: {list(gdf_mexico.columns)}")
         
         return gdf_mexico
     
     except Exception as e:
-        print(f"❌ Error al cargar el GeoJSON: {e}")
+        print(f" Error al cargar el GeoJSON: {e}")
         return None
 
 def crear_mapa_base_mexico(gdf_mexico, titulo="Mapa de México", figsize=(12, 8)):
@@ -411,16 +411,16 @@ def guardar_mapa_como_imagen(fig, nombre_archivo, dpi=300, bbox_inches='tight'):
     try:
         fig.savefig(nombre_archivo, dpi=dpi, bbox_inches=bbox_inches, 
                    facecolor='white', edgecolor='none')
-        print(f"✅ Mapa guardado como: {nombre_archivo}")
+        print(f" Mapa guardado como: {nombre_archivo}")
     except Exception as e:
-        print(f"❌ Error al guardar el mapa: {e}")
+        print(f"Error al guardar el mapa: {e}")
 
 # Función de ejemplo para demostrar el uso
 def ejemplo_uso_mapas():
     """
     Función de ejemplo que demuestra cómo usar las funciones de mapas
     """
-    print("🗺️  EJEMPLO DE USO DE FUNCIONES DE MAPAS DE MÉXICO")
+    print("EJEMPLO DE USO DE FUNCIONES DE MAPAS DE MÉXICO")
     print("=" * 60)
     
     # Ruta al archivo GeoJSON
@@ -449,7 +449,7 @@ def ejemplo_uso_mapas():
         guardar_mapa_como_imagen(fig, "data/mapa_coropletico_ventas.png")
         plt.show()
         
-        print("✅ Mapas de ejemplo creados exitosamente!")
+        print(" Mapas de ejemplo creados exitosamente!")
 
 if __name__ == "__main__":
     ejemplo_uso_mapas()
