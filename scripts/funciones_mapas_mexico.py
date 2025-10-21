@@ -316,6 +316,69 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     # Lista para almacenar información de ciudades mostradas
     ciudades_mostradas = []
     
+    # Preparar control de superposición de etiquetas
+    label_bboxes = []
+
+    def colocar_etiqueta(xy, texto):
+        # Candidatos de desplazamiento en puntos para evitar solapamiento
+        candidatos = [(6, 6), (-6, 6), (6, -6), (-6, -6), (12, 0), (-12, 0), (0, 12), (0, -12),
+                      (18, 12), (-18, 12), (18, -12), (-18, -12), (24, 0), (0, 24),
+                      (24, 24), (-24, 24), (24, -24), (-24, -24)]
+        renderer = None
+        mejor_candidato = candidatos[0]
+        minimo_solape = float('inf')
+
+        for dx, dy in candidatos:
+            ha = 'left' if dx >= 0 else 'right'
+            va = 'bottom' if dy >= 0 else 'top'
+            ann = ax.annotate(
+                texto, xy=xy, xytext=(dx, dy), textcoords='offset points',
+                fontsize=8, fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85,
+                          edgecolor='gray', linewidth=0.5),
+                ha=ha, va=va, zorder=10,
+                arrowprops=dict(arrowstyle='-', color='gray', lw=0.5)
+            )
+            fig.canvas.draw()
+            if renderer is None:
+                renderer = fig.canvas.get_renderer()
+            bbox = ann.get_window_extent(renderer=renderer)
+
+            # Evaluar solape con etiquetas previas
+            solapa = False
+            area_solape_total = 0.0
+            for old in label_bboxes:
+                x0 = max(bbox.x0, old.x0); y0 = max(bbox.y0, old.y0)
+                x1 = min(bbox.x1, old.x1); y1 = min(bbox.y1, old.y1)
+                if x1 > x0 and y1 > y0:
+                    solapa = True
+                    area_solape_total += (x1 - x0) * (y1 - y0)
+            if not solapa:
+                label_bboxes.append(bbox)
+                return ann
+            # Mantener el mejor candidato con menor área de solape
+            if area_solape_total < minimo_solape:
+                minimo_solape = area_solape_total
+                mejor_candidato = (dx, dy)
+            ann.remove()
+
+        # Si todos solapan, usar el mejor candidato (menor solape)
+        dx, dy = mejor_candidato
+        ha = 'left' if dx >= 0 else 'right'
+        va = 'bottom' if dy >= 0 else 'top'
+        ann_final = ax.annotate(
+            texto, xy=xy, xytext=(dx, dy), textcoords='offset points',
+            fontsize=8, fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85,
+                      edgecolor='gray', linewidth=0.5),
+            ha=ha, va=va, zorder=10,
+            arrowprops=dict(arrowstyle='-', color='gray', lw=0.5)
+        )
+        fig.canvas.draw()
+        bbox_final = ann_final.get_window_extent(renderer=fig.canvas.get_renderer())
+        label_bboxes.append(bbox_final)
+        return ann_final
+
     for i, (_, ciudad) in enumerate(top_ciudades.iterrows()):
         nombre_ciudad = ciudad['Ciudad']
         if nombre_ciudad in coordenadas_ciudades:
@@ -339,16 +402,9 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
             num_ventas = int(ciudad.get('Num_Ventas', 0))
             etiqueta = f"{nombre_ciudad}\nVentas: {num_ventas}\nTotal: {valor_fmt}"
 
-            ax.annotate(
-                etiqueta,
-                xy=(lon, lat), xytext=(6, 6),
-                textcoords='offset points',
-                fontsize=8, fontweight='bold',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85,
-                          edgecolor='gray', linewidth=0.5),
-                ha='left', va='bottom', zorder=10
-            )
-
+            # Colocar etiqueta evitando solapes
+            colocar_etiqueta((lon, lat), etiqueta)
+            
             ciudades_mostradas.append((nombre_ciudad, valor, size))
     
     # Leyenda de tamaños deshabilitada (marcadores con tamaño fijo)
