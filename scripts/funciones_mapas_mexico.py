@@ -233,25 +233,16 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     return fig, ax
 
 def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None, 
-                              color_map='elegant', add_layers=True):
+                              color_map='minimal', add_layers=False):
     """
-    Crea un mapa interactivo de México usando Folium con estilo estético mejorado
-    
-    Args:
-        gdf_mexico (gpd.GeoDataFrame): GeoDataFrame con datos de México
-        datos_ventas (pd.DataFrame, optional): DataFrame con datos de ventas
-        columna_region (str, optional): Nombre de la columna con las regiones
-        columna_valor (str, optional): Nombre de la columna con los valores
-        color_map (str): Nombre de la paleta de colores a usar ('elegant', 'sunset', 'modern', etc.)
-        add_layers (bool): Si se deben agregar capas adicionales al mapa
-    
-    Returns:
-        folium.Map: Mapa interactivo de Folium
+    Crea un mapa interactivo minimalista y estético con Folium.
+    - Un solo tile base (CartoDB Positron)
+    - Sin popups complejos, solo tooltips simples
+    - Estilo suave con bordes discretos y color por valor
     """
     try:
         import folium
         from branca.colormap import LinearColormap
-        from folium import plugins
     except ImportError:
         print(" [AVISO] Folium no está instalado; omitiendo mapa interactivo. Instale con: pip install folium")
         return None
@@ -261,297 +252,119 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
     
-    # Crear el mapa base con estilo moderno
+    # Mapa base minimalista
     m = folium.Map(
         location=[center_lat, center_lon], 
         zoom_start=5, 
         tiles='CartoDB Positron',
         control_scale=True
     )
-    
-    # Agregar capas base adicionales para mejor estética
-    if add_layers:
-        folium.TileLayer('CartoDB Dark_Matter', name='Dark Mode').add_to(m)
-        folium.TileLayer('CartoDB Voyager', name='Voyager').add_to(m)
-        folium.TileLayer(
-            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png',
-            name='Voyager Labels',
-            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        ).add_to(m)
-        folium.TileLayer(
-            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            name='Satellite',
-            attr='Esri'
-        ).add_to(m)
-        
-        # Agregar control de capas
-        folium.LayerControl(position='topright', collapsed=True).add_to(m)
-    
-    # Agregar los estados al mapa
+
+    # Copia y normalización de ENTIDAD para mejores coincidencias
+    gdf_plot = gdf_mexico.copy()
+    gdf_plot['ENTIDAD'] = gdf_plot['ENTIDAD'].replace({
+        'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
+        'ESTADO DE MÉXICO': 'MÉXICO'
+    })
+
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
-        # Crear mapeo de regiones a valores
-        valores_region = dict(zip(datos_ventas[columna_region], datos_ventas[columna_valor]))
+        # Normalizar nombres de región (español e inglés)
+        region_aliases = {
+            'Norte': 'north_mexico',
+            'Centro': 'central_mexico',
+            'Sur': 'south_mexico',
+            'north_mexico': 'north_mexico',
+            'central_mexico': 'central_mexico',
+            'south_mexico': 'south_mexico'
+        }
         
-        # Mapeo de regiones a estados
+        # Mapeo de regiones a estados (coherente con el coroplético)
         mapeo_regiones = {
-            'north_mexico': ['BAJA CALIFORNIA', 'SONORA', 'CHIHUAHUA', 'COAHUILA', 'NUEVO LEÓN', 'TAMAULIPAS'],
-            'central_mexico': ['DISTRITO FEDERAL', 'MÉXICO', 'MORELOS', 'PUEBLA', 'TLAXCALA', 'HIDALGO', 'QUERÉTARO', 'GUANAJUATO', 'AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ'],
-            'south_mexico': ['GUERRERO', 'OAXACA', 'CHIAPAS', 'VERACRUZ', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO', 'MICHOACÁN', 'COLIMA', 'JALISCO', 'NAYARIT', 'SINALOA', 'DURANGO']
+            'north_mexico': [
+                'BAJA CALIFORNIA', 'BAJA CALIFORNIA SUR', 'SONORA', 'CHIHUAHUA', 'COAHUILA',
+                'NUEVO LEÓN', 'TAMAULIPAS', 'SINALOA', 'DURANGO'
+            ],
+            'central_mexico': [
+                'AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ', 'GUANAJUATO', 'QUERÉTARO',
+                'HIDALGO', 'MÉXICO', 'CIUDAD DE MÉXICO', 'MORELOS', 'TLAXCALA', 'PUEBLA', 'MICHOACÁN'
+            ],
+            'south_mexico': [
+                'JALISCO', 'COLIMA', 'NAYARIT', 'VERACRUZ', 'GUERRERO', 'OAXACA',
+                'CHIAPAS', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO'
+            ]
         }
-        
-        # Define paletas conocidas (aproximadas) por nombre
-        palettes = {
-            'plasma': ['#0c0887', '#5601a4', '#8b02a8', '#b5367a', '#e16462', '#f89441', '#fccf2d'],
-            'viridis': ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
-            'inferno': ['#000004', '#1f0c48', '#741a6d', '#b63679', '#ed6925', '#fcffa4'],
-            'magma': ['#000004', '#1c1044', '#5e1f78', '#b63679', '#fb8761', '#fcfdbf'],
-            'cividis': ['#00224e', '#2c5c8a', '#3a7f88', '#76a365', '#d7d566'],
-            # Nuevas paletas estéticas
-            'pastel': ['#a1d6e2', '#1995ad', '#bcbabe', '#f1f1f2', '#a5a5af'],
-            'sunset': ['#f8b195', '#f67280', '#c06c84', '#6c5b7b', '#355c7d'],
-            'modern': ['#2d4059', '#ea5455', '#f07b3f', '#ffd460', '#a7e9af'],
-            'minimal': ['#ececec', '#9fd3c7', '#385170', '#142d4c', '#ececec'],
-            'elegant': ['#30475e', '#f2a365', '#ececec', '#222831', '#dddddd']
-        }
-        
-        # Construir colormap continuo para una apariencia más profesional
+
+        # Valores por región
+        regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(str(r), str(r)))
+        valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
+
         vals = list(valores_region.values())
         vmin, vmax = (min(vals) if vals else 0), (max(vals) if vals else 1)
-        
-        # Usar la paleta seleccionada o elegir una por defecto
-        colors = palettes.get(color_map, palettes['elegant'])
-        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax)
-        
-        # Agregar leyenda de colores
-        cmap.caption = f"{columna_valor} por Región"
+
+        # Paletas simples y limpias
+        palettes = {
+            'minimal': ['#f7f7f7', '#cccccc', '#969696', '#525252'],  # Gris neutro
+            'viridis': ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
+            'pastel': ['#e3f2fd', '#90caf9', '#42a5f5', '#1e88e5'],  # Azules suaves
+        }
+        colors = palettes.get(color_map, palettes['minimal'])
+        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax, caption=f"{columna_valor} por región")
         m.add_child(cmap)
-        
-        # Función para obtener color basado en el valor
-        def get_color(entidad):
-            for region, estados in mapeo_regiones.items():
-                if entidad in estados:
-                    valor = valores_region.get(region, 0)
-                    return cmap(valor)
-            return '#95A5A6'  # Gris neutro
-        
-        # Agregar cada estado al mapa con estilos mejorados
-        for _, row in gdf_mexico.iterrows():
-            entidad = row['ENTIDAD']
-            color = get_color(entidad)
-            
-            # Encontrar la región del estado
-            region = 'other'
+
+        def get_region(entidad):
             for reg, estados in mapeo_regiones.items():
                 if entidad in estados:
-                    region = reg
-                    break
-            
-            valor = valores_region.get(region, 0)
-            
-            # Obtener información adicional del estado
-            capital = row.get('CAPITAL', 'N/A')
-            clave = row.get('CVE_EDO', 'N/A')
-            
-            # Crear tooltip con diseño moderno
-            tooltip_html = f"""
-            <div style="
-                font-family: 'Segoe UI', 'Roboto', sans-serif; 
-                font-size: 14px; 
-                padding: 15px 20px; 
-                background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%); 
-                border: none; 
-                border-radius: 16px; 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-                min-width: 200px;
-                max-width: 240px;
-                backdrop-filter: blur(5px);
-            ">
-                <div style="color: #1a1a2e; font-size: 20px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.5px;">
-                    {entidad}
-                </div>
-                <div style="color: #616161; font-size: 13px; margin-bottom: 8px; font-weight: 500;">{capital}</div>
-                <div style="
-                    color: #fff; 
-                    font-size: 18px; 
-                    font-weight: 600; 
-                    background: linear-gradient(135deg, {color} 0%, {color}dd 100%);
-                    padding: 8px 15px;
-                    border-radius: 12px;
-                    display: inline-block;
-                    margin-top: 5px;
-                ">${valor:,.0f}</div>
-            </div>
-            """
-            
-            # Crear popup más detallado con diseño moderno
-            popup_html = f"""
-            <div style="
-                font-family: 'Segoe UI', 'Roboto', sans-serif;
-                padding: 20px;
-                background: #ffffff;
-                border-radius: 12px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-                min-width: 250px;
-            ">
-                <h3 style="
-                    color: #1a1a2e;
-                    margin: 0 0 15px 0;
-                    font-weight: 600;
-                    font-size: 22px;
-                    border-bottom: 2px solid {color};
-                    padding-bottom: 8px;
-                ">{entidad}</h3>
-                
-                <div style="display: flex; margin-bottom: 15px;">
-                    <div style="
-                        background: linear-gradient(135deg, {color} 0%, {color}dd 100%);
-                        color: white;
-                        padding: 10px 15px;
-                        border-radius: 10px;
-                        font-weight: 600;
-                        font-size: 18px;
-                    ">${valor:,.0f}</div>
-                </div>
-                
-                <table style="
-                    width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0 8px;
-                    font-size: 14px;
-                ">
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Capital</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">{capital}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Clave</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">{clave}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Región</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">{region.replace('_', ' ').title()}</td>
-                    </tr>
-                </table>
-            </div>
-            """
-            
-            # Agregar GeoJson con highlight en hover
+                    return reg
+            return 'other'
+
+        # Añadir estados con estilo minimal y tooltip sencillo
+        for _, row in gdf_plot.iterrows():
+            entidad = row['ENTIDAD']
+            reg = get_region(entidad)
+            valor = valores_region.get(reg, None)
+            color = cmap(valor if valor is not None else 0)
+
             folium.GeoJson(
                 row['geometry'],
-                style_function=lambda x, color=color: {
-                    'fillColor': color,
-                    'color': '#34495E',
-                    'weight': 0.8,
-                    'fillOpacity': 0.8,
+                style_function=lambda x, col=color: {
+                    'fillColor': col,
+                    'color': '#A0A0A0',
+                    'weight': 0.7,
+                    'fillOpacity': 0.75,
                 },
                 highlight_function=lambda x: {
                     'fillColor': color,
-                    'color': '#000',
-                    'weight': 2,
+                    'color': '#000000',
+                    'weight': 1.2,
                     'fillOpacity': 0.9,
                 },
-                popup=folium.Popup(popup_html, max_width=300),
                 tooltip=folium.Tooltip(
-                    tooltip_html, 
-                    sticky=True, 
-                    style="background-color: transparent; border: none; box-shadow: none;"
+                    f"{entidad} — ${valor:,.0f}" if valor else f"{entidad}",
+                    sticky=False
                 )
             ).add_to(m)
     else:
-        # Mapa simple sin datos de ventas con estilo moderno
-        for _, row in gdf_mexico.iterrows():
+        # Sin datos: relleno neutro y tooltip con nombre del estado
+        neutral_fill = '#eaeaea'
+        for _, row in gdf_plot.iterrows():
             entidad = row['ENTIDAD']
-            capital = row.get('CAPITAL', 'N/A')
-            clave = row.get('CVE_EDO', 'N/A')
-            
-            # Tooltip para hover con diseño moderno
-            tooltip_html = f"""
-            <div style="
-                font-family: 'Segoe UI', 'Roboto', sans-serif; 
-                font-size: 14px; 
-                padding: 15px 20px; 
-                background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%); 
-                border: none; 
-                border-radius: 16px; 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-                min-width: 200px;
-                backdrop-filter: blur(5px);
-            ">
-                <div style="color: #1a1a2e; font-size: 20px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.5px;">
-                    {entidad}
-                </div>
-                <div style="color: #616161; font-size: 13px; font-weight: 500;">{capital}</div>
-            </div>
-            """
-            
-            # Popup para click con diseño moderno
-            popup_html = f"""
-            <div style="
-                font-family: 'Segoe UI', 'Roboto', sans-serif;
-                padding: 20px;
-                background: #ffffff;
-                border-radius: 12px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-                min-width: 250px;
-            ">
-                <h3 style="
-                    color: #1a1a2e;
-                    margin: 0 0 15px 0;
-                    font-weight: 600;
-                    font-size: 22px;
-                    border-bottom: 2px solid #30475e;
-                    padding-bottom: 8px;
-                ">{entidad}</h3>
-                
-                <table style="
-                    width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0 8px;
-                    font-size: 14px;
-                ">
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Capital</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">{capital}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Clave</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">{clave}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: 600; color: #616161; padding: 5px 0;">Tipo</td>
-                        <td style="color: #1a1a2e; padding: 5px 0;">Estado de México</td>
-                    </tr>
-                </table>
-            </div>
-            """
-            
-            # Agregar GeoJson con highlight en hover
             folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x: {
-                    'fillColor': '#9fd3c7',
-                    'color': '#385170',
-                    'weight': 0.8,
-                    'fillOpacity': 0.7,
+                    'fillColor': neutral_fill,
+                    'color': '#A0A0A0',
+                    'weight': 0.7,
+                    'fillOpacity': 0.65,
                 },
                 highlight_function=lambda x: {
-                    'fillColor': '#f2a365',
-                    'color': '#30475e',
-                    'weight': 2,
-                    'fillOpacity': 0.9,
+                    'fillColor': '#d5d5d5',
+                    'color': '#000000',
+                    'weight': 1.2,
+                    'fillOpacity': 0.85,
                 },
-                popup=folium.Popup(popup_html, max_width=300),
-                tooltip=folium.Tooltip(
-                    tooltip_html, 
-                    sticky=True, 
-                    style="background-color: transparent; border: none; box-shadow: none;"
-                )
+                tooltip=folium.Tooltip(entidad, sticky=False)
             ).add_to(m)
-    
-    # Agregar controles adicionales para mejor experiencia de usuario
-    plugins.Fullscreen(position='topright').add_to(m)
-    plugins.MeasureControl(position='bottomright', primary_length_unit='kilometers').add_to(m)
-    
+
     return m
 
 def guardar_mapa_como_imagen(fig, nombre_archivo, dpi=300, bbox_inches='tight'):
