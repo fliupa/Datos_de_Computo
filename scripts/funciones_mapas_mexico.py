@@ -99,8 +99,8 @@ def crear_mapa_base_mexico(gdf_mexico, titulo="Mapa de México", figsize=(12, 8)
     
     return fig, ax
 
-def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, columna_valor, 
-                                titulo="Ventas por Región", cmap='plasma', figsize=(14, 10)):
+def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, columna_valor,
+                                  titulo="Ventas por Región", cmap="plasma", figsize=(14, 10)):
     """
     Crea un mapa coroplético por regiones a partir de datos de ventas.
     
@@ -126,27 +126,46 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     
-    # Crear un diccionario de mapeo de regiones a estados
+    # Mapeo de regiones a estados (ES)
     mapeo_regiones = {
-        'north_mexico': ['BAJA CALIFORNIA', 'SONORA', 'CHIHUAHUA', 'COAHUILA', 'NUEVO LEÓN', 'TAMAULIPAS'],
-        'central_mexico': ['DISTRITO FEDERAL', 'MÉXICO', 'MORELOS', 'PUEBLA', 'TLAXCALA', 'HIDALGO', 'QUERÉTARO', 'GUANAJUATO', 'AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ'],
-        'south_mexico': ['GUERRERO', 'OAXACA', 'CHIAPAS', 'VERACRUZ', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO', 'MICHOACÁN', 'COLIMA', 'JALISCO', 'NAYARIT', 'SINALOA', 'DURANGO']
+        "Norte": [
+            "Baja California", "Baja California Sur", "Sonora", "Chihuahua", "Coahuila",
+            "Nuevo León", "Tamaulipas", "Sinaloa", "Durango"
+        ],
+        "Centro": [
+            "Aguascalientes", "Zacatecas", "San Luis Potosí", "Guanajuato", "Querétaro",
+            "Hidalgo", "Estado de México", "Ciudad de México", "Morelos", "Tlaxcala",
+            "Puebla", "Michoacán"
+        ],
+        "Sur": [
+            "Jalisco", "Colima", "Nayarit", "Veracruz", "Guerrero", "Oaxaca",
+            "Chiapas", "Tabasco", "Campeche", "Yucatán", "Quintana Roo"
+        ],
     }
     
     # Crear una copia del GeoDataFrame
     gdf_plot = gdf_mexico.copy()
-    
-    # Agregar columna de región basada en el mapeo
-    gdf_plot['region'] = 'other'
+
+    # Asignación de región al GeoDataFrame (ES)
+    gdf_plot["region"] = "Otros"
     for region, estados in mapeo_regiones.items():
-        mask = gdf_plot['ENTIDAD'].isin(estados)
-        gdf_plot.loc[mask, 'region'] = region
+        mask = gdf_plot["ENTIDAD"].isin(estados)
+        gdf_plot.loc[mask, "region"] = region
     
-    # Crear diccionario de valores por región
-    valores_region = dict(zip(datos_ventas[columna_region], datos_ventas[columna_valor]))
-    
+    # Normalizar nombres de región del DataFrame (EN->ES) y construir valores por región
+    region_aliases = {
+        "north_mexico": "Norte",
+        "central_mexico": "Centro",
+        "south_mexico": "Sur",
+        "Norte": "Norte",
+        "Centro": "Centro",
+        "Sur": "Sur",
+    }
+    regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(r, r))
+    valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
+
     # Asignar valores a cada estado basado en su región
-    gdf_plot['valor'] = gdf_plot['region'].map(valores_region).fillna(0)
+    gdf_plot["valor"] = gdf_plot["region"].map(valores_region).fillna(0)
     
     # Crear el mapa coroplético con colorbar para mostrar los datos
     im = gdf_plot.plot(
@@ -156,13 +175,13 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
                     'shrink': 0.6, 'aspect': 30, 'pad': 0.1}
     )
     
-    # Agregar anotaciones con los valores por región en el centro de cada región
+    # Centroides por región (ES)
     region_centroids = {
-        'north_mexico': (-106.0, 28.0),  # Centro aproximado del norte
-        'central_mexico': (-99.5, 20.5),  # Centro aproximado del centro
-        'south_mexico': (-95.0, 17.0)     # Centro aproximado del sur
+        "Norte": (-106.0, 28.0),
+        "Centro": (-99.5, 20.5),
+        "Sur": (-95.0, 17.0),
     }
-    
+
     # Mostrar valores de datos en cada región
     for region, valor in valores_region.items():
         if region in region_centroids:
@@ -192,13 +211,13 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
                             alpha=0.8, edgecolor='gray', linewidth=0.5),
                    zorder=10)
     
-    # Agregar leyenda de regiones en la esquina superior derecha
+    # Nombres de regiones para leyenda (ES)
     region_names = {
-        'north_mexico': 'Norte de México',
-        'central_mexico': 'Centro de México', 
-        'south_mexico': 'Sur de México'
+        "Norte": "Norte de México",
+        "Centro": "Centro de México",
+        "Sur": "Sur de México",
     }
-    
+
     legend_text = "Regiones:\n"
     es_conteo = any(k in columna_valor.lower() for k in ['num', 'count', 'numero', 'cantidad'])
     for region, valor in valores_region.items():
