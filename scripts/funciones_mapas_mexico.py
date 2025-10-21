@@ -568,20 +568,16 @@ def crear_mapa_ciudades_principales_interactivo(gdf_mexico, datos_ciudades, titu
     return m
 
 
-def crear_mapa_interactivo_folium(
-    gdf_mexico,
-    datos_ventas=None,
-    columna_region=None,
-    columna_valor=None,
-    color_map: str = 'plasma',
-    add_minimap: bool = False,
-    add_fullscreen: bool = False,
-    add_measure: bool = False,
-    add_mousepos: bool = False,
-    show_circles: bool = False,
-    minimal: bool = True,
-    show_legend: bool = False
-):
+def crear_mapa_interactivo_folium(gdf_mexico,
+                                  datos_ventas=None,
+                                  columna_region=None,
+                                  columna_valor=None,
+                                  tiles="CartoDB positron",
+                                  zoom_start=5,
+                                  center=(-99.1332, 19.4326),
+                                  tooltip_col="ENTIDAD",
+                                  popup_cols=None,
+                                  guardar_path=None):
     """
     Crea un mapa interactivo con Folium, con paletas y tooltips modernos.
     
@@ -623,13 +619,14 @@ def crear_mapa_interactivo_folium(
     except ImportError:
         print(" [AVISO] Folium no está instalado; omitiendo mapa interactivo. Instale con: pip install folium")
         return None
-    # Centro del mapa calculado desde los límites del GeoDataFrame.
-    bounds = gdf_mexico.total_bounds
-    center_lat = (bounds[1] + bounds[3]) / 2
-    center_lon = (bounds[0] + bounds[2]) / 2
-    
-    # Mapa base: en modo minimal se usa 'CartoDB Positron' para estética limpia.
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, tiles=('CartoDB Positron' if minimal else 'OpenStreetMap'))
+    # Centro del mapa
+    if center is not None:
+        center_lon, center_lat = center
+    else:
+        bounds = gdf_mexico.total_bounds
+        center_lat = (bounds[1] + bounds[3]) / 2
+        center_lon = (bounds[0] + bounds[2]) / 2
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=tiles)
     # Capas base adicionales y control de capas (evitar sobrecarga visual en modo minimal)
     if not minimal:
         folium.TileLayer('CartoDB Positron', name='Positron').add_to(m)
@@ -646,16 +643,34 @@ def crear_mapa_interactivo_folium(
     
     # Agregar los estados al mapa
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
-        # Crear mapeo de regiones a valores
-        valores_region = dict(zip(datos_ventas[columna_region], datos_ventas[columna_valor]))
-        
-        # Mapeo de regiones a estados
-        mapeo_regiones = {
-            'north_mexico': ['BAJA CALIFORNIA', 'SONORA', 'CHIHUAHUA', 'COAHUILA', 'NUEVO LEÓN', 'TAMAULIPAS'],
-            'central_mexico': ['DISTRITO FEDERAL', 'MÉXICO', 'MORELOS', 'PUEBLA', 'TLAXCALA', 'HIDALGO', 'QUERÉTARO', 'GUANAJUATO', 'AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ'],
-            'south_mexico': ['GUERRERO', 'OAXACA', 'CHIAPAS', 'VERACRUZ', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO', 'MICHOACÁN', 'COLIMA', 'JALISCO', 'NAYARIT', 'SINALOA', 'DURANGO']
+        # Normalizar nombres de región del DataFrame (EN->ES)
+        region_aliases = {
+            "north_mexico": "Norte",
+            "central_mexico": "Centro",
+            "south_mexico": "Sur",
+            "Norte": "Norte",
+            "Centro": "Centro",
+            "Sur": "Sur",
         }
-        
+        regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(r, r))
+        valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
+
+        # Mapeo de regiones a estados (ES)
+        mapeo_regiones = {
+            "Norte": [
+                "Baja California", "Baja California Sur", "Sonora", "Chihuahua", "Coahuila",
+                "Nuevo León", "Tamaulipas", "Sinaloa", "Durango"
+            ],
+            "Centro": [
+                "Aguascalientes", "Zacatecas", "San Luis Potosí", "Guanajuato", "Querétaro",
+                "Hidalgo", "Estado de México", "Ciudad de México", "Morelos", "Tlaxcala",
+                "Puebla", "Michoacán"
+            ],
+            "Sur": [
+                "Jalisco", "Colima", "Nayarit", "Veracruz", "Guerrero", "Oaxaca",
+                "Chiapas", "Tabasco", "Campeche", "Yucatán", "Quintana Roo"
+            ],
+        }
         # Colormap continuo basado en rango de valores (vmin→vmax) para gradientes suaves
         vals = list(valores_region.values())
         vmin, vmax = (min(vals) if vals else 0), (max(vals) if vals else 1)
