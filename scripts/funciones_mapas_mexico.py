@@ -262,14 +262,29 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
         'Chihuahua': (-106.0691, 28.6353),
         'Morelia': (-101.1949, 19.7006),
         'Toluca': (-99.6832, 19.2926),
-        'Veracruz': (-96.1342, 19.1738)
-    }
+        'Veracruz': (-96.1342, 19.1738),
+         
+         # Ciudades solicitadas para aparecer en el mapa
+         'Tuxtla Gutiérrez': (-93.1161, 16.7530),
+         'Pachuca': (-98.7333, 20.1167),
+         'Villahermosa': (-92.9291, 17.9895),
+         'Tampico': (-97.8550, 22.2550),
+         'Ensenada': (-116.6070, 31.8650),
+         'Tlaxcala': (-98.2386, 19.3186),
+         'Cuernavaca': (-99.2340, 18.9242),
+         'Reynosa': (-98.2732, 26.0920)
+     }
     
     # Filtrar top ciudades
     top_ciudades = datos_ciudades.head(top_n)
     
-    # Color único para marcadores minimalistas
-    color_marcador = '#1f77b4'
+    # Paleta de colores para cada ciudad (único por punto)
+    try:
+        colors_ciudades = sns.color_palette("husl", n_colors=len(top_ciudades))
+    except Exception:
+        colors_ciudades = plt.cm.tab20(np.linspace(0, 1, len(top_ciudades)))
+    # Color neutro para la leyenda de tamaños (no representa ciudades)
+    color_marcador_leyenda = '#1f77b4'
     
     # Agregar marcadores para las ciudades con información de datos
     # Determinar columna de valor y máximo para escalar tamaños
@@ -288,11 +303,11 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
             lon, lat = coordenadas_ciudades[nombre_ciudad]
             valor = float(ciudad.get('Total_Ventas', ciudad.get('Ingresos_Total', 0)))
             
-            # Tamaño del marcador proporcional al valor usando interpolación
-            size = float(np.interp(valor, [min_valor, max_valor], [size_range[0], size_range[1]]))
+            # Tamaño del marcador fijo (se elimina la escala por valor)
+            size = 300.0
             
-            # Marcador con información de datos
-            ax.scatter(lon, lat, s=size, c=color_marcador, alpha=0.7, edgecolors='white', linewidth=1.5, zorder=5)
+            # Marcador con información de datos y color único
+            ax.scatter(lon, lat, s=size, color=colors_ciudades[i], alpha=0.8, edgecolors='white', linewidth=1.5, zorder=5)
             
             # Agregar etiqueta con el nombre de la ciudad y valor (solo para las top 5)
             if i < 5:
@@ -314,38 +329,9 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
             
             ciudades_mostradas.append((nombre_ciudad, valor, size))
     
-    # Crear leyenda de tamaños de marcadores
-    legend_sizes = [size_range[0], (size_range[0] + size_range[1]) // 2, size_range[1]]
-    legend_values = [min_valor, (min_valor + max_valor) / 2, max_valor]
-    
-    # Posición para la leyenda de tamaños (esquina inferior izquierda)
-    legend_x = 0.02
-    legend_y = 0.02
-    
-    # Título de la leyenda
-    ax.text(legend_x, legend_y + 0.15, 'Tamaño del marcador:', 
-           transform=ax.transAxes, fontsize=10, fontweight='bold')
-    
-    # Marcadores de ejemplo en la leyenda
-    for i, (size, valor) in enumerate(zip(legend_sizes, legend_values)):
-        y_pos = legend_y + 0.12 - (i * 0.04)
-        
-        # Marcador de ejemplo
-        ax.scatter(legend_x + 0.02, y_pos, s=size/3, c=color_marcador, 
-                  alpha=0.7, edgecolors='white', linewidth=1, 
-                  transform=ax.transAxes, zorder=10)
-        
-        # Texto del valor
-        if valor >= 1000000:
-            valor_fmt = f'${valor/1000000:.1f}M'
-        elif valor >= 1000:
-            valor_fmt = f'${valor/1000:.0f}K'
-        else:
-            valor_fmt = f'${valor:.0f}'
-            
-        ax.text(legend_x + 0.06, y_pos, valor_fmt, 
-               transform=ax.transAxes, fontsize=9, va='center')
-    
+    # Leyenda de tamaños deshabilitada (marcadores con tamaño fijo)
+    # Se retiró la escala por valor y su leyenda.
+
     # Agregar información estadística en la esquina superior derecha
     if ciudades_mostradas:
         stats_text = f"Top {len(ciudades_mostradas)} ciudades mostradas\n"
