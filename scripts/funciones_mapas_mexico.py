@@ -181,7 +181,14 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
         'Chihuahua': (-106.0691, 28.6353),
         'Morelia': (-101.1949, 19.7006),
         'Toluca': (-99.6832, 19.2926),
-        'Veracruz': (-96.1342, 19.1738)
+        'Veracruz': (-96.1342, 19.1738),
+        # Ciudades adicionales solicitadas
+        'Tuxtla Gutiérrez': (-93.1160, 16.7530),
+        'Pachuca': (-98.7333, 20.1167),
+        'Villahermosa': (-92.9281, 17.9893),
+        'Tampico': (-97.8555, 22.2553),
+        'Ensenada': (-116.5964, 31.8667),
+        'Tlaxcala': (-98.2372, 19.3183),
     }
     
     # Filtrar top ciudades
@@ -191,7 +198,14 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     colores_vibrantes = ['#E74C3C', '#9B59B6', '#3498DB', '#1ABC9C', '#F39C12', 
                         '#E67E22', '#2ECC71', '#F1C40F', '#E91E63', '#FF5722']
     
-    # Agregar marcadores para las ciudades con colores más vibrantes
+    # Patrón de offsets para distribuir etiquetas y minimizar empalmes
+    offset_patterns = [
+        (-24, -18), (24, -18), (24, 18), (-24, 18),
+        (-32, 0), (32, 0), (0, 28), (0, -28), (20, 12), (-20, -12)
+    ]
+    annotations = []
+    
+    # Agregar marcadores y etiquetas con offsets
     for i, (_, ciudad) in enumerate(top_ciudades.iterrows()):
         nombre_ciudad = ciudad['Ciudad']
         if nombre_ciudad in coordenadas_ciudades:
@@ -199,17 +213,40 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
             valor = ciudad.get('Total_Ventas', ciudad.get('Ingresos_Total', 0))
             
             # Tamaño del marcador proporcional al valor
-            size = max(80, min(600, valor / max(top_ciudades.get('Total_Ventas', top_ciudades.get('Ingresos_Total', [1]))) * 400))
+            max_val = max(top_ciudades.get('Total_Ventas', top_ciudades.get('Ingresos_Total', [1])))
+            size = max(80, min(600, (valor / max_val) * 400))
             
             # Color vibrante basado en el ranking
             color = colores_vibrantes[i % len(colores_vibrantes)]
             
             ax.scatter(lon, lat, s=size, c=color, alpha=0.8, edgecolors='white', linewidth=3, zorder=5)
-            ax.annotate(f'{nombre_ciudad}\n${valor:,.0f}', xy=(lon, lat), 
-                       xytext=(5, 5), textcoords='offset points',
-                       fontsize=10, fontweight='bold', color='#2C3E50',
-                       bbox=dict(boxstyle='round,pad=0.4', facecolor='#FFFFFF', 
-                               edgecolor=color, linewidth=2, alpha=0.95))
+            
+            # Offset alternado para etiqueta
+            dx, dy = offset_patterns[i % len(offset_patterns)]
+            ha = 'left' if dx > 0 else ('right' if dx < 0 else 'center')
+            va = 'bottom' if dy > 0 else ('top' if dy < 0 else 'center')
+            ann = ax.annotate(
+                f'{nombre_ciudad}\n${valor:,.0f}', xy=(lon, lat), 
+                xytext=(dx, dy), textcoords='offset points',
+                ha=ha, va=va,
+                fontsize=10, fontweight='bold', color='#2C3E50', zorder=6,
+                bbox=dict(boxstyle='round,pad=0.4', facecolor='#FFFFFF', 
+                          edgecolor=color, linewidth=2, alpha=0.95),
+                arrowprops=dict(arrowstyle='-', color='#7F8C8D', lw=0.8)
+            )
+            annotations.append(ann)
+    
+    # Ajuste automático de etiquetas si la librería adjustText está disponible
+    try:
+        from adjustText import adjust_text
+        adjust_text(
+            annotations, ax=ax,
+            expand_points=(1.2, 1.2), expand_text=(1.2, 1.2),
+            arrowprops=dict(arrowstyle='-', color='#7F8C8D', lw=0.8)
+        )
+    except ImportError:
+        # Si no está instalada, dejamos el posicionamiento por offsets como fallback
+        pass
     
     # Configurar el mapa con estilo más vibrante
     ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
@@ -233,12 +270,12 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     return fig, ax
 
 def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None, 
-                              color_map='minimal', add_layers=False):
+                              color_map='pastel_soft', add_layers=False):
     """
-    Crea un mapa interactivo minimalista y estético con Folium.
+    Mapa interactivo minimalista que colorea por ventas por estado (pastel suave).
     - Un solo tile base (CartoDB Positron)
-    - Sin popups complejos, solo tooltips simples
-    - Estilo suave con bordes discretos y color por valor
+    - Solo tooltips simples con "Estado — $ventas"
+    - Paletas pastel suaves; sin popups ni capas extra
     """
     try:
         import folium
@@ -246,100 +283,69 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     except ImportError:
         print(" [AVISO] Folium no está instalado; omitiendo mapa interactivo. Instale con: pip install folium")
         return None
-        
-    # Calcular el centro de México
+
     bounds = gdf_mexico.total_bounds
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
-    
-    # Mapa base minimalista
+
     m = folium.Map(
-        location=[center_lat, center_lon], 
-        zoom_start=5, 
+        location=[center_lat, center_lon],
+        zoom_start=5,
         tiles='CartoDB Positron',
         control_scale=True
     )
 
-    # Copia y normalización de ENTIDAD para mejores coincidencias
+    # Normalizar ENTIDAD para coincidencias
     gdf_plot = gdf_mexico.copy()
     gdf_plot['ENTIDAD'] = gdf_plot['ENTIDAD'].replace({
         'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
         'ESTADO DE MÉXICO': 'MÉXICO'
     })
+    gdf_plot['ENTIDAD_UP'] = gdf_plot['ENTIDAD'].astype(str).str.upper()
 
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
-        # Normalizar nombres de región (español e inglés)
-        region_aliases = {
-            'Norte': 'north_mexico',
-            'Centro': 'central_mexico',
-            'Sur': 'south_mexico',
-            'north_mexico': 'north_mexico',
-            'central_mexico': 'central_mexico',
-            'south_mexico': 'south_mexico'
-        }
-        
-        # Mapeo de regiones a estados (coherente con el coroplético)
-        mapeo_regiones = {
-            'north_mexico': [
-                'BAJA CALIFORNIA', 'BAJA CALIFORNIA SUR', 'SONORA', 'CHIHUAHUA', 'COAHUILA',
-                'NUEVO LEÓN', 'TAMAULIPAS', 'SINALOA', 'DURANGO'
-            ],
-            'central_mexico': [
-                'AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ', 'GUANAJUATO', 'QUERÉTARO',
-                'HIDALGO', 'MÉXICO', 'CIUDAD DE MÉXICO', 'MORELOS', 'TLAXCALA', 'PUEBLA', 'MICHOACÁN'
-            ],
-            'south_mexico': [
-                'JALISCO', 'COLIMA', 'NAYARIT', 'VERACRUZ', 'GUERRERO', 'OAXACA',
-                'CHIAPAS', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO'
-            ]
-        }
+        # Tomar ventas por estado directamente
+        df = datos_ventas.copy()
+        df['__ESTADO_UP'] = df[columna_region].astype(str).str.strip().str.upper().replace({
+            'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
+            'ESTADO DE MÉXICO': 'MÉXICO'
+        })
+        valores_estado = dict(zip(df['__ESTADO_UP'], df[columna_valor]))
 
-        # Valores por región
-        regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(str(r), str(r)))
-        valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
-
-        vals = list(valores_region.values())
+        vals = list(valores_estado.values())
         vmin, vmax = (min(vals) if vals else 0), (max(vals) if vals else 1)
 
-        # Paletas simples y limpias
         palettes = {
-            'minimal': ['#f7f7f7', '#cccccc', '#969696', '#525252'],  # Gris neutro
-            'viridis': ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
-            'pastel': ['#e3f2fd', '#90caf9', '#42a5f5', '#1e88e5'],  # Azules suaves
+            'pastel_soft': ['#f7fbff', '#e3f2fd', '#bbdefb', '#90caf9', '#64b5f6'],
+            'pastel': ['#e3f2fd', '#bbdefb', '#90caf9', '#64b5f6', '#42a5f5'],
+            'minimal': ['#f7f7f7', '#cccccc', '#969696', '#525252']
         }
-        colors = palettes.get(color_map, palettes['minimal'])
-        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax, caption=f"{columna_valor} por región")
+        colors = palettes.get(color_map, palettes['pastel_soft'])
+        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax, caption=f"{columna_valor} por estado")
         m.add_child(cmap)
 
-        def get_region(entidad):
-            for reg, estados in mapeo_regiones.items():
-                if entidad in estados:
-                    return reg
-            return 'other'
-
-        # Añadir estados con estilo minimal y tooltip sencillo
         for _, row in gdf_plot.iterrows():
             entidad = row['ENTIDAD']
-            reg = get_region(entidad)
-            valor = valores_region.get(reg, None)
-            color = cmap(valor if valor is not None else 0)
+            entidad_up = row['ENTIDAD_UP']
+            valor = valores_estado.get(entidad_up, None)
+            color = cmap(valor if valor is not None else vmin)
 
             folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x, col=color: {
                     'fillColor': col,
-                    'color': '#A0A0A0',
+                    'color': '#B0BEC5',
                     'weight': 0.7,
-                    'fillOpacity': 0.75,
+                    'fillOpacity': 0.72,
                 },
-                highlight_function=lambda x: {
-                    'fillColor': color,
+                highlight_function=lambda x, col=color: {
+                    'fillColor': col,
                     'color': '#000000',
-                    'weight': 1.2,
+                    'weight': 1.1,
                     'fillOpacity': 0.9,
                 },
                 tooltip=folium.Tooltip(
-                    f"{entidad} — ${valor:,.0f}" if valor else f"{entidad}",
+                    f"{entidad} — ${valor:,.0f}" if valor is not None else entidad,
                     sticky=False
                 )
             ).add_to(m)
@@ -352,14 +358,14 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                 row['geometry'],
                 style_function=lambda x: {
                     'fillColor': neutral_fill,
-                    'color': '#A0A0A0',
+                    'color': '#B0BEC5',
                     'weight': 0.7,
                     'fillOpacity': 0.65,
                 },
                 highlight_function=lambda x: {
                     'fillColor': '#d5d5d5',
                     'color': '#000000',
-                    'weight': 1.2,
+                    'weight': 1.1,
                     'fillOpacity': 0.85,
                 },
                 tooltip=folium.Tooltip(entidad, sticky=False)
