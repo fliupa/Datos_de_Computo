@@ -70,10 +70,13 @@ def crear_mapa_base_mexico(gdf_mexico, titulo="Mapa de México", figsize=(12, 8)
     
     return fig, ax
 
-def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, columna_valor, 
-                                titulo="Ventas por Región", cmap='plasma', figsize=(14, 10)):
+def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None, 
+                                titulo="Ventas por Región", cmap='plasma', figsize=(14, 10), valores_por_region=None):
     """
-    Crea un mapa coroplético de México con datos de ventas por región (colores funcionando)
+    Crea un mapa coroplético de México con datos de ventas por región.
+    - Si se proporcionan `datos_ventas` y columnas, se usan directamente.
+    - Si no, intenta calcular automáticamente desde ventas/clientes locales.
+    - Si falla, usa valores embebidos por región como fallback.
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     
@@ -93,27 +96,82 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
         ]
     }
 
-    # Normalizar claves de región del DataFrame a las esperadas en el mapeo
-    region_aliases = {
-        'Norte': 'north_mexico',
-        'Centro': 'central_mexico',
-        'Sur': 'south_mexico',
-        'north_mexico': 'north_mexico',
-        'central_mexico': 'central_mexico',
-        'south_mexico': 'south_mexico'
-    }
-    regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(str(r), str(r)))
-    valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
-    
-    # Copia del GeoDataFrame y sinónimos de ENTIDAD para mejorar coincidencias
+    # Normalizar y preparar GeoDataFrame
     gdf_plot = gdf_mexico.copy()
     entidad_sinonimos = {
         'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
         'ESTADO DE MÉXICO': 'MÉXICO'
     }
     gdf_plot['ENTIDAD'] = gdf_plot['ENTIDAD'].replace(entidad_sinonimos)
-    
-    # Asignar región a cada estado
+
+    # Construcción de valores por región
+    valores_region = None
+    if isinstance(valores_por_region, dict) and valores_por_region:
+        valores_region = valores_por_region
+    elif datos_ventas is not None and columna_region is not None and columna_valor is not None:
+        # Usar DataFrame proporcionado
+        region_aliases = {
+            'Norte': 'north_mexico',
+            'Centro': 'central_mexico',
+            'Sur': 'south_mexico',
+            'north_mexico': 'north_mexico',
+            'central_mexico': 'central_mexico',
+            'south_mexico': 'south_mexico'
+        }
+        regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(str(r), str(r)))
+        valores_region = datos_ventas.groupby(regiones_df)[columna_valor].sum().to_dict()
+    else:
+        # Intentar calcular automáticamente desde CSV locales
+        try:
+            import os
+            import pandas as pd
+            base_dir = os.path.dirname(__file__)
+            ventas_path = os.path.join(base_dir, 'ventas.csv')
+            clientes_path = os.path.join(base_dir, 'clientes.csv')
+            ventas = pd.read_csv(ventas_path)
+            clientes = pd.read_csv(clientes_path)
+            df = ventas.merge(clientes[['ID_Cliente', 'Ciudad']], on='ID_Cliente', how='left')
+            
+            # Mapeo ciudad -> entidad (estado)
+            ciudad_to_entidad = {
+                'Ciudad de México': 'CIUDAD DE MÉXICO', 'Guadalajara': 'JALISCO', 'Monterrey': 'NUEVO LEÓN',
+                'Puebla': 'PUEBLA', 'Tijuana': 'BAJA CALIFORNIA', 'León': 'GUANAJUATO', 'Cancún': 'QUINTANA ROO',
+                'Querétaro': 'QUERÉTARO', 'Mérida': 'YUCATÁN', 'Aguascalientes': 'AGUASCALIENTES',
+                'Hermosillo': 'SONORA', 'Morelia': 'MICHOACÁN', 'Toluca': 'MÉXICO', 'Veracruz': 'VERACRUZ',
+                'Tampico': 'TAMAULIPAS', 'Culiacán': 'SINALOA', 'Mazatlán': 'SINALOA', 'Acapulco': 'GUERRERO',
+                'Saltillo': 'COAHUILA', 'Durango': 'DURANGO', 'Campeche': 'CAMPECHE', 'Oaxaca': 'OAXACA',
+                'Zacatecas': 'ZACATECAS', 'Colima': 'COLIMA', 'Tlaxcala': 'TLAXCALA', 'Ciudad Juárez': 'CHIHUAHUA',
+                'Villahermosa': 'TABASCO', 'Chetumal': 'QUINTANA ROO', 'La Paz': 'BAJA CALIFORNIA SUR',
+                'Torreón': 'COAHUILA', 'Celaya': 'GUANAJUATO', 'Irapuato': 'GUANAJUATO', 'Manzanillo': 'COLIMA',
+                'Ensenada': 'BAJA CALIFORNIA', 'Ciudad Obregón': 'SONORA', 'Nogales': 'SONORA', 'Los Mochis': 'SINALOA',
+                'Matamoros': 'TAMAULIPAS', 'Reynosa': 'TAMAULIPAS', 'Coatzacoalcos': 'VERACRUZ', 'Pachuca': 'HIDALGO',
+                'Cuernavaca': 'MORELOS', 'Tepic': 'NAYARIT', 'Tuxtla Gutiérrez': 'CHIAPAS', 'Xalapa': 'VERACRUZ',
+                'San Luis Potosí': 'SAN LUIS POTOSÍ', 'Gómez Palacio': 'DURANGO', 'Uruapan': 'MICHOACÁN',
+                'Ciudad Victoria': 'TAMAULIPAS'
+            }
+            df['ENTIDAD'] = df['Ciudad'].map(ciudad_to_entidad)
+            df['ENTIDAD'] = df['ENTIDAD'].replace(entidad_sinonimos)
+            
+            # Columna de valor
+            val_col = 'Total' if 'Total' in df.columns else df.select_dtypes('number').columns[-1]
+            
+            # Totales por estado y región
+            totales_estado = df.groupby('ENTIDAD', dropna=True)[val_col].sum().reset_index()
+            region_map = {}
+            for region, estados in mapeo_regiones.items():
+                for est in estados:
+                    region_map[est] = region
+            totales_estado['region'] = totales_estado['ENTIDAD'].map(region_map).fillna('other')
+            valores_region = totales_estado.groupby('region')[val_col].sum().to_dict()
+        except Exception as e:
+            print(f" [AVISO] No se pudo calcular automáticamente; usando valores embebidos. Detalle: {e}")
+            valores_region = {
+                'north_mexico': 25896.71,
+                'central_mexico': 24520.91,
+                'south_mexico': 26943.64
+            }
+
+    # Asignar región por estado en el GeoDataFrame
     gdf_plot['region'] = 'other'
     for region, estados in mapeo_regiones.items():
         mask = gdf_plot['ENTIDAD'].isin(estados)
@@ -122,11 +180,11 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
     # Asignar valor por región (si no hay valor, 0)
     gdf_plot['valor'] = gdf_plot['region'].map(valores_region).fillna(0)
     
-    # Choropleth con leyenda y cmap especificado
+    # Dibujar el choropleth
     gdf_plot.plot(
         column='valor', ax=ax, cmap=cmap, legend=True,
         edgecolor='white', linewidth=1.2, alpha=0.9,
-        legend_kwds={'label': columna_valor, 'orientation': 'horizontal', 'shrink': 0.8}
+        legend_kwds={'label': 'Ventas por región', 'orientation': 'horizontal', 'shrink': 0.8}
     )
     
     # Estilo del mapa
