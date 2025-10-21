@@ -117,7 +117,7 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
         tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]: Figura y ejes del mapa.
     
     Notas:
-        - Mapea `Norte`, `Centro`, `Sur` a conjuntos de estados (acepta alias en inglés: `north_mexico`, `central_mexico`, `south_mexico`).
+        - Mapea `north_mexico`, `central_mexico`, `south_mexico` a conjuntos de estados.
         - Inserta valores por región y colorea entidades según su grupo.
         - No muestra leyenda para mantener sobriedad.
     
@@ -157,11 +157,9 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
         "north_mexico": "Norte",
         "central_mexico": "Centro",
         "south_mexico": "Sur",
-        "other": "Otros",
         "Norte": "Norte",
         "Centro": "Centro",
         "Sur": "Sur",
-        "Otros": "Otros",
     }
     regiones_df = datos_ventas[columna_region].map(lambda r: region_aliases.get(r, r))
     valores_region = dict(zip(regiones_df, datos_ventas[columna_valor]))
@@ -593,20 +591,12 @@ def crear_mapa_interactivo_folium(gdf_mexico,
                                   datos_ventas=None,
                                   columna_region=None,
                                   columna_valor=None,
-                                  tiles="CartoDB Positron",
+                                  tiles="CartoDB positron",
                                   zoom_start=5,
                                   center=(-99.1332, 19.4326),
                                   tooltip_col="ENTIDAD",
                                   popup_cols=None,
-                                  guardar_path=None,
-                                  color_map='viridis',
-                                  add_minimap=True,
-                                  add_fullscreen=True,
-                                  add_measure=True,
-                                  add_mousepos=True,
-                                  show_circles=False,
-                                  minimal=False,
-                                  show_legend=True):
+                                  guardar_path=None):
     """
     Crea un mapa interactivo con Folium, con paletas y tooltips modernos.
     
@@ -677,7 +667,6 @@ def crear_mapa_interactivo_folium(gdf_mexico,
             "north_mexico": "Norte",
             "central_mexico": "Centro",
             "south_mexico": "Sur",
-            "other": "Otros",
             "Norte": "Norte",
             "Centro": "Centro",
             "Sur": "Sur",
