@@ -167,13 +167,23 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
     for region, valor in valores_region.items():
         if region in region_centroids:
             x, y = region_centroids[region]
-            # Formatear el valor según su magnitud
-            if valor >= 1000000:
-                texto_valor = f'${valor/1000000:.1f}M'
-            elif valor >= 1000:
-                texto_valor = f'${valor/1000:.0f}K'
+            # Determinar si el valor representa un conteo (no moneda)
+            es_conteo = any(k in columna_valor.lower() for k in ['num', 'count', 'numero', 'cantidad'])
+            # Formatear el valor según su magnitud, sin símbolo "$" para conteos
+            if es_conteo:
+                if valor >= 1000000:
+                    texto_valor = f'{valor/1000000:.1f}M'
+                elif valor >= 1000:
+                    texto_valor = f'{valor/1000:.0f}K'
+                else:
+                    texto_valor = f'{valor:.0f}'
             else:
-                texto_valor = f'${valor:.0f}'
+                if valor >= 1000000:
+                    texto_valor = f'${valor/1000000:.1f}M'
+                elif valor >= 1000:
+                    texto_valor = f'${valor/1000:.0f}K'
+                else:
+                    texto_valor = f'${valor:.0f}'
             
             # Agregar texto con fondo semi-transparente
             ax.text(x, y, texto_valor, fontsize=12, fontweight='bold',
@@ -190,14 +200,23 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas, columna_region, col
     }
     
     legend_text = "Regiones:\n"
+    es_conteo = any(k in columna_valor.lower() for k in ['num', 'count', 'numero', 'cantidad'])
     for region, valor in valores_region.items():
         if region in region_names:
-            if valor >= 1000000:
-                valor_fmt = f'${valor/1000000:.1f}M'
-            elif valor >= 1000:
-                valor_fmt = f'${valor/1000:.0f}K'
+            if es_conteo:
+                if valor >= 1000000:
+                    valor_fmt = f'{valor/1000000:.1f}M'
+                elif valor >= 1000:
+                    valor_fmt = f'{valor/1000:.0f}K'
+                else:
+                    valor_fmt = f'{valor:.0f}'
             else:
-                valor_fmt = f'${valor:.0f}'
+                if valor >= 1000000:
+                    valor_fmt = f'${valor/1000000:.1f}M'
+                elif valor >= 1000:
+                    valor_fmt = f'${valor/1000:.0f}K'
+                else:
+                    valor_fmt = f'${valor:.0f}'
             legend_text += f"• {region_names[region]}: {valor_fmt}\n"
     
     # Posicionar la leyenda de regiones
@@ -309,24 +328,27 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
             # Marcador con información de datos y color único
             ax.scatter(lon, lat, s=size, color=colors_ciudades[i], alpha=0.8, edgecolors='white', linewidth=1.5, zorder=5)
             
-            # Agregar etiqueta con el nombre de la ciudad y valor (solo para las top 5)
-            if i < 5:
-                if valor >= 1000000:
-                    valor_fmt = f'${valor/1000000:.1f}M'
-                elif valor >= 1000:
-                    valor_fmt = f'${valor/1000:.0f}K'
-                else:
-                    valor_fmt = f'${valor:.0f}'
-                
-                # Etiqueta con nombre y valor
-                ax.annotate(f'{nombre_ciudad}\n{valor_fmt}', 
-                           xy=(lon, lat), xytext=(5, 5), 
-                           textcoords='offset points',
-                           fontsize=8, fontweight='bold',
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
-                                   alpha=0.8, edgecolor='gray', linewidth=0.5),
-                           ha='left', va='bottom', zorder=10)
-            
+            # Agregar etiqueta con la información completa por ciudad (ventas y total)
+            if valor >= 1000000:
+                valor_fmt = f'${valor/1000000:.1f}M'
+            elif valor >= 1000:
+                valor_fmt = f'${valor/1000:.0f}K'
+            else:
+                valor_fmt = f'${valor:.0f}'
+
+            num_ventas = int(ciudad.get('Num_Ventas', 0))
+            etiqueta = f"{nombre_ciudad}\nVentas: {num_ventas}\nTotal: {valor_fmt}"
+
+            ax.annotate(
+                etiqueta,
+                xy=(lon, lat), xytext=(6, 6),
+                textcoords='offset points',
+                fontsize=8, fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85,
+                          edgecolor='gray', linewidth=0.5),
+                ha='left', va='bottom', zorder=10
+            )
+
             ciudades_mostradas.append((nombre_ciudad, valor, size))
     
     # Leyenda de tamaños deshabilitada (marcadores con tamaño fijo)
@@ -349,6 +371,146 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     ax.set_facecolor('white')
     
     return fig, ax
+
+
+def crear_mapa_ciudades_principales_interactivo(gdf_mexico, datos_ciudades, titulo="Principales Ciudades por Ventas (Interactivo)", top_n=10, tiles='CartoDB Positron'):
+    """
+    Crea un mapa interactivo HTML con marcadores por ciudad; al hacer clic
+    en cada punto se muestra la información de ventas por ciudad.
+
+    Args:
+        gdf_mexico (gpd.GeoDataFrame): Entidades y geometrías de México.
+        datos_ciudades (pd.DataFrame): Debe contener 'Ciudad', 'Num_Ventas' y 'Total_Ventas'.
+        titulo (str): Título del mapa.
+        top_n (int): Número de ciudades a mostrar (orden según df de entrada).
+        tiles (str): Capa base de Folium (por defecto 'CartoDB Positron').
+
+    Returns:
+        folium.Map | None: Mapa interactivo si Folium está disponible, None si no.
+    """
+    try:
+        import folium
+        from matplotlib.colors import to_hex
+        import numpy as np
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print(" [AVISO] Folium no está instalado; instale con: pip install folium")
+        return None
+
+    # Centro del mapa a partir de límites del GeoDataFrame
+    bounds = gdf_mexico.total_bounds
+    center_lat = (bounds[1] + bounds[3]) / 2
+    center_lon = (bounds[0] + bounds[2]) / 2
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, tiles=tiles, control_scale=True)
+
+    # Capa base de entidades para contexto visual (sobria)
+    try:
+        for _, row in gdf_mexico.iterrows():
+            folium.GeoJson(
+                row['geometry'],
+                name=row.get('ENTIDAD', 'Entidad'),
+                style_function=lambda x: {
+                    'fillColor': '#eeeeee',
+                    'color': '#b0b3b8',
+                    'weight': 0.6,
+                    'fillOpacity': 0.15,
+                }
+            ).add_to(m)
+    except Exception:
+        pass
+
+    # Coordenadas aproximadas de ciudades principales de México
+    coordenadas_ciudades = {
+        'Ciudad de México': (-99.1332, 19.4326),
+        'Guadalajara': (-103.3496, 20.6597),
+        'Monterrey': (-100.3161, 25.6866),
+        'Puebla': (-98.2063, 19.0414),
+        'Tijuana': (-117.0382, 32.5149),
+        'León': (-101.6804, 21.1619),
+        'Juárez': (-106.4245, 31.6904),
+        'Torreón': (-103.4344, 25.5428),
+        'Querétaro': (-100.3899, 20.5888),
+        'San Luis Potosí': (-100.9855, 22.1565),
+        'Mérida': (-89.5926, 20.9674),
+        'Mexicali': (-115.4683, 32.6245),
+        'Aguascalientes': (-102.2916, 21.8853),
+        'Hermosillo': (-110.9559, 29.0729),
+        'Saltillo': (-101.0053, 25.4260),
+        'Culiacán': (-107.3943, 24.7999),
+        'Chihuahua': (-106.0691, 28.6353),
+        'Morelia': (-101.1949, 19.7006),
+        'Toluca': (-99.6832, 19.2926),
+        'Veracruz': (-96.1342, 19.1738),
+        # Ciudades añadidas
+        'Tuxtla Gutiérrez': (-93.1161, 16.7530),
+        'Pachuca': (-98.7333, 20.1167),
+        'Villahermosa': (-92.9291, 17.9895),
+        'Tampico': (-97.8550, 22.2550),
+        'Ensenada': (-116.6070, 31.8650),
+        'Tlaxcala': (-98.2386, 19.3186),
+        'Cuernavaca': (-99.2340, 18.9242),
+        'Reynosa': (-98.2732, 26.0920)
+    }
+
+    # Top N ciudades según el DataFrame de entrada
+    top_ciudades = datos_ciudades.head(top_n)
+
+    # Paleta de colores única por ciudad
+    try:
+        colors_ciudades = [to_hex(c) for c in sns.color_palette("husl", n_colors=len(top_ciudades))]
+    except Exception:
+        colors_ciudades = [to_hex(c) for c in plt.cm.tab20(np.linspace(0, 1, len(top_ciudades)))]
+
+    # Añadir marcadores con tooltip (hover) y popup (click)
+    for i, (_, ciudad) in enumerate(top_ciudades.iterrows()):
+        nombre_ciudad = ciudad['Ciudad']
+        if nombre_ciudad in coordenadas_ciudades:
+            lon, lat = coordenadas_ciudades[nombre_ciudad]
+            num_ventas = int(ciudad.get('Num_Ventas', ciudad.get('num_ventas', 0)))
+            valor = float(ciudad.get('Total_Ventas', ciudad.get('Ingresos_Total', ciudad.get('total_ventas', 0))))
+            valor_fmt = f"${valor:,.0f}"
+
+            popup_html = f"""
+            <div style="font-family: Arial; font-size: 13px; padding: 10px; min-width: 220px;">
+                <h4 style="color: #2E86AB; margin: 0 0 8px 0;">{nombre_ciudad}</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td><b>Ventas:</b></td><td>{num_ventas:,}</td></tr>
+                    <tr><td><b>Total:</b></td><td>{valor_fmt}</td></tr>
+                </table>
+            </div>
+            """
+
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=8,
+                color=colors_ciudades[i],
+                weight=2,
+                fill=True,
+                fill_color=colors_ciudades[i],
+                fill_opacity=0.9,
+                tooltip=folium.Tooltip(nombre_ciudad, sticky=True),
+                popup=folium.Popup(popup_html, max_width=300)
+            ).add_to(m)
+
+    folium.LayerControl(position='topright', collapsed=True).add_to(m)
+    # Título en el mapa (overlay simple)
+    title_html = f"""
+        <div style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+                     background: rgba(255,255,255,0.95); padding: 6px 12px; border-radius: 8px;
+                     border: 1px solid #b0b3b8; font-family: 'Segoe UI', Tahoma, sans-serif;
+                     font-size: 14px; color: #2C3E50; z-index: 999;">
+            {titulo}
+        </div>
+    """
+    try:
+        from folium import Element
+        m.get_root().html.add_child(Element(title_html))
+    except Exception:
+        pass
+
+    return m
+
 
 def crear_mapa_interactivo_folium(
     gdf_mexico,
