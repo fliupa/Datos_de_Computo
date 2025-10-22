@@ -316,7 +316,7 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     return fig, ax
 
 def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None,
-                                  color_map='pastel_soft', add_layers=False, columna_num_ventas=Num_Ventas):
+                                  color_map='pastel_soft', add_layers=False, columna_num_ventas=None):
     """
     Mapa interactivo que colorea por valor de ventas por estado.
     - Normaliza nombres de estado y soporta entradas por estado o por región (Norte/Centro/Sur).
