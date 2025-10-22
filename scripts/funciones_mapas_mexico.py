@@ -499,6 +499,133 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
 
     return m
 
+# ----------------------
+# Utilidades integradas
+# ----------------------
+
+def construir_df_regiones_desde_csv(base_dir=None):
+    """
+    Construye un DataFrame de métricas por estado (región) desde ventas.csv y clientes.csv.
+    - Detecta la llave de cliente para merge.
+    - Determina ENTIDAD por 'Estado' si existe o mapea desde 'Ciudad'.
+    - Normaliza nombres y sinónimos de estados.
+    - Agrega número de ventas y total de ventas por estado.
+
+    Returns: pd.DataFrame con columnas ['region','num_ventas','total_ventas']
+    """
+    import os
+    import pandas as pd
+
+    base_dir = base_dir or os.path.dirname(__file__)
+    ventas_path = os.path.join(base_dir, 'ventas.csv')
+    clientes_path = os.path.join(base_dir, 'clientes.csv')
+
+    v = pd.read_csv(ventas_path)
+    c = pd.read_csv(clientes_path)
+
+    # Detecta llave de cliente
+    merge_col_v = next((col for col in ['ID_Cliente', 'cliente_id', 'id_cliente', 'Cliente_ID'] if col in v.columns), None)
+    merge_col_c = next((col for col in ['ID_Cliente', 'cliente_id', 'id_cliente', 'Cliente_ID'] if col in c.columns), None)
+
+    if merge_col_v and merge_col_c:
+        df_v = v.merge(c, left_on=merge_col_v, right_on=merge_col_c, how='left')
+    else:
+        df_v = v.copy()
+
+    # Mapeo Ciudad -> Estado (cobertura amplia)
+    ciudad_to_entidad = {
+        'Ciudad de México': 'CIUDAD DE MÉXICO', 'Guadalajara': 'JALISCO', 'Monterrey': 'NUEVO LEÓN',
+        'Puebla': 'PUEBLA', 'Tijuana': 'BAJA CALIFORNIA', 'León': 'GUANAJUATO', 'Cancún': 'QUINTANA ROO',
+        'Querétaro': 'QUERÉTARO', 'Mérida': 'YUCATÁN', 'Aguascalientes': 'AGUASCALIENTES',
+        'Hermosillo': 'SONORA', 'Morelia': 'MICHOACÁN', 'Toluca': 'MÉXICO', 'Veracruz': 'VERACRUZ',
+        'Tampico': 'TAMAULIPAS', 'Culiacán': 'SINALOA', 'Mazatlán': 'SINALOA', 'Acapulco': 'GUERRERO',
+        'Saltillo': 'COAHUILA', 'Durango': 'DURANGO', 'Campeche': 'CAMPECHE', 'Oaxaca': 'OAXACA',
+        'Zacatecas': 'ZACATECAS', 'Colima': 'COLIMA', 'Tlaxcala': 'TLAXCALA', 'Ciudad Juárez': 'CHIHUAHUA',
+        'Villahermosa': 'TABASCO', 'Chetumal': 'QUINTANA ROO', 'La Paz': 'BAJA CALIFORNIA SUR',
+        'Torreón': 'COAHUILA', 'Celaya': 'GUANAJUATO', 'Irapuato': 'GUANAJUATO', 'Manzanillo': 'COLIMA',
+        'Ensenada': 'BAJA CALIFORNIA', 'Ciudad Obregón': 'SONORA', 'Nogales': 'SONORA', 'Los Mochis': 'SINALOA',
+        'Matamoros': 'TAMAULIPAS', 'Reynosa': 'TAMAULIPAS', 'Coatzacoalcos': 'VERACRUZ', 'Pachuca': 'HIDALGO',
+        'Cuernavaca': 'MORELOS', 'Tepic': 'NAYARIT', 'Tuxtla Gutiérrez': 'CHIAPAS', 'Xalapa': 'VERACRUZ',
+        'San Luis Potosí': 'SAN LUIS POTOSÍ', 'Gómez Palacio': 'DURANGO', 'Uruapan': 'MICHOACÁN',
+        'Ciudad Victoria': 'TAMAULIPAS', 'Mexicali': 'BAJA CALIFORNIA'
+    }
+
+    # Determina ENTIDAD: prioriza 'Estado' si existe; si no mapea desde 'Ciudad'
+    if 'Estado' in df_v.columns and df_v['Estado'].notna().any():
+        df_v['ENTIDAD'] = df_v['Estado']
+    elif 'Ciudad' in df_v.columns:
+        df_v['ENTIDAD'] = df_v['Ciudad'].map(ciudad_to_entidad)
+    else:
+        df_v['ENTIDAD'] = None
+
+    # Normaliza y sinónimos
+    df_v['ENTIDAD_UP'] = (
+        df_v['ENTIDAD'].astype(str).str.strip().str.upper()
+          .replace({'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO', 'ESTADO DE MÉXICO': 'MÉXICO'})
+    )
+
+    # Detecta columna de monto y convierte a numérico
+    value_candidates = ['Total', 'total', 'Monto', 'monto', 'Importe', 'importe',
+                        'Ingresos_Total', 'ingresos_total', 'Total_Ventas', 'total_ventas']
+    valor_col = next((col for col in value_candidates if col in df_v.columns), None)
+    if valor_col is not None:
+        df_v[valor_col] = pd.to_numeric(df_v[valor_col], errors='coerce')
+
+    # Agrega por estado
+    grp = df_v.dropna(subset=['ENTIDAD_UP']).groupby('ENTIDAD_UP')
+    df_regiones = grp.agg(
+        num_ventas=('ENTIDAD_UP', 'count'),
+        total_ventas=(valor_col, 'sum') if valor_col is not None else ('ENTIDAD_UP', 'size')
+    ).reset_index().rename(columns={'ENTIDAD_UP': 'region'})
+
+    return df_regiones
+
+
+def generar_mapa_interactivo_mexico_desde_csv(geojson_path=None, output_path=None, show_inline=False):
+    """
+    Genera el mapa interactivo de México a partir de CSVs locales y lo guarda en HTML.
+    - Usa color base #8BDDF1 y resaltado #F18BAA.
+    - Guarda por defecto en data/mapa_interactivo_mexico.html.
+
+    Args:
+        geojson_path: ruta al GeoJSON (por defecto admin1.geojson en la carpeta actual)
+        output_path: ruta de salida HTML (por defecto data/mapa_interactivo_mexico.html)
+        show_inline: si True e IPython está disponible, muestra el IFrame en notebook
+    """
+    import os
+    from pathlib import Path
+
+    base_dir = os.path.dirname(__file__)
+    geojson_path = geojson_path or os.path.join(base_dir, 'admin1.geojson')
+    output_path = output_path or os.path.join(base_dir, 'data', 'mapa_interactivo_mexico.html')
+    Path(os.path.dirname(output_path)).mkdir(parents=True, exist_ok=True)
+
+    gdf_mexico = cargar_geojson_mexico(geojson_path)
+    df_regiones = construir_df_regiones_desde_csv(base_dir=base_dir)
+
+    m = crear_mapa_interactivo_folium(
+        gdf_mexico,
+        datos_ventas=df_regiones,
+        columna_region='region',
+        columna_valor='total_ventas'
+    )
+
+    if m is not None:
+        m.save(str(output_path))
+        print(f"Mapa interactivo de México creado: {output_path}")
+        if show_inline:
+            try:
+                from IPython.display import IFrame, display, HTML
+                display(HTML("<h3>Mapa interactivo de México (ventas por estado)</h3>"))
+                display(IFrame(src=str(output_path), width="100%", height=650))
+            except Exception:
+                pass
+        return m
+    else:
+        print("No se pudo crear el mapa interactivo; verifique que Folium y GeoPandas estén instalados.")
+        return None
+
+
 def guardar_mapa_como_imagen(fig, nombre_archivo, dpi=300, bbox_inches='tight'):
     """
     Guarda un mapa de matplotlib como imagen
