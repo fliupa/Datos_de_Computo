@@ -512,15 +512,43 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
             zoom_on_click=True
         ).add_to(m)
 
-    # Guardar HTML para visualización fiable en notebook
-    out_dir = os.path.join(os.getcwd(), 'data')
-    os.makedirs(out_dir, exist_ok=True)
-    html_out = os.path.join(out_dir, 'mapa_interactivo_mexico.html')
+    # Añadir control de capas si se solicita
     try:
-        m.save(html_out)
+        if add_layers:
+            import folium
+            folium.LayerControl(position='topright').add_to(m)
+    except Exception:
+        pass
+
+    # Guardar HTML en dos ubicaciones: CWD/data y .ipynb_checkpoints/data
+    html_out = None
+    errores_guardado = []
+    try:
+        out_dir_cwd = os.path.join(os.getcwd(), 'data')
+        os.makedirs(out_dir_cwd, exist_ok=True)
+        html_out_cwd = os.path.join(out_dir_cwd, 'mapa_interactivo_mexico.html')
+        m.save(html_out_cwd)
+        html_out = html_out_cwd
     except Exception as e:
-        print(f" [AVISO] No se pudo guardar el mapa en HTML: {e}")
-        html_out = None
+        errores_guardado.append(f"CWD/data: {e}")
+
+    try:
+        base_dir_file = os.path.dirname(__file__)
+        out_dir_ckpt = os.path.join(base_dir_file, 'data')
+        os.makedirs(out_dir_ckpt, exist_ok=True)
+        html_out_ckpt = os.path.join(out_dir_ckpt, 'mapa_interactivo_mexico.html')
+        m.save(html_out_ckpt)
+        if html_out is None:
+            html_out = html_out_ckpt
+    except Exception as e:
+        errores_guardado.append(f".ipynb_checkpoints/data: {e}")
+
+    if errores_guardado:
+        print(" [AVISO] No se pudo guardar en todas las rutas:")
+        for msg in errores_guardado:
+            print("  -", msg)
+        if html_out is None:
+            print(" [ERROR] No se pudo guardar el mapa en HTML en ninguna ruta.")
 
     return m, html_out
 
