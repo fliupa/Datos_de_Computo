@@ -422,25 +422,15 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
         })
         valores_estado = dict(zip(df['__ESTADO_UP'], df[columna_valor]))
 
-        vals = list(valores_estado.values())
-        vmin, vmax = (min(vals) if vals else 0), (max(vals) if vals else 1)
-
-        palettes = {
-            'pastel_soft': ['#f7fbff', '#e3f2fd', '#bbdefb', '#90caf9', '#64b5f6'],
-            'pastel': ['#e3f2fd', '#bbdefb', '#90caf9', '#64b5f6', '#42a5f5'],
-            'minimal': ['#f7f7f7', '#cccccc', '#969696', '#525252']
-        }
-        colors = palettes.get(color_map, palettes['pastel_soft'])
-        cmap = LinearColormap(colors=colors, vmin=vmin, vmax=vmax, caption=f"{columna_valor} por estado")
-        m.add_child(cmap)
+        base_color = '#8BDDF1'
+        click_color = '#F18BAA'
 
         for _, row in gdf_plot.iterrows():
             entidad = row['ENTIDAD']
             entidad_up = row['ENTIDAD_UP']
             valor = valores_estado.get(entidad_up, None)
-            color = cmap(valor if valor is not None else vmin)
 
-            # Tooltip con conteo y monto (si disponibles)
+            # Métricas para tooltip y popup
             num = num_ventas_estado.get(entidad_up, 0)
             monto = valor if valor is not None else monto_ventas_estado.get(entidad_up, None)
             tooltip_text = (
@@ -449,78 +439,63 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                 f"{entidad} — ${monto:,.0f}" if (monto is not None) else
                 entidad
             )
+            monto_str = f"${monto:,.0f}" if monto is not None else "N/A"
+            popup_html = f"<b>{entidad}</b><br>{num} ventas<br>Total: {monto_str}"
 
             folium.GeoJson(
                 row['geometry'],
-                style_function=lambda x, col=color: {
+                style_function=lambda x, col=base_color: {
                     'fillColor': col,
                     'color': '#B0BEC5',
                     'weight': 0.7,
                     'fillOpacity': 0.72,
                 },
-                highlight_function=lambda x, col=color: {
-                    'fillColor': col,
+                highlight_function=lambda x: {
+                    'fillColor': click_color,
                     'color': '#000000',
                     'weight': 1.1,
                     'fillOpacity': 0.9,
                 },
-                tooltip=folium.Tooltip(tooltip_text, sticky=False)
+                tooltip=folium.Tooltip(tooltip_text, sticky=False),
+                popup=folium.Popup(popup_html, max_width=260),
+                zoom_on_click=True
             ).add_to(m)
     else:
-        # Sin datos: relleno neutro y tooltip con nombre del estado
-        # Color base para todos los estados
-        color_base = '#8BDDF1'  # Color azul claro
-        color_click = '#F18BAA'  # Color rosa para clic
-        
+        # Sin datos: color base fijo y métricas en popup/tooltip
+        base_color = '#8BDDF1'
+        click_color = '#F18BAA'
         for _, row in gdf_plot.iterrows():
             entidad = row['ENTIDAD']
             entidad_up = row['ENTIDAD_UP']
             num = num_ventas_estado.get(entidad_up, 0)
             monto = monto_ventas_estado.get(entidad_up, None)
-            
-            # Tooltip con información de ventas
             tooltip_text = (
                 f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
                 f"{entidad} — {num} ventas" if (num > 0) else
                 f"{entidad} — ${monto:,.0f}" if (monto is not None) else
                 entidad
             )
-            
-            # Popup con información detallada
-            popup_html = f"""
-            <div style="font-family: Arial, sans-serif; font-size: 14px; padding: 10px; min-width: 200px;">
-                <h4 style="color: #2C3E50; margin: 0 0 10px 0;">{entidad}</h4>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr><td><b>Número de ventas:</b></td><td>{num}</td></tr>
-                    <tr><td><b>Total de ventas:</b></td><td>${monto:,.2f if monto is not None else '0.00'}</td></tr>
-                </table>
-            </div>
-            """
-            
-            # Crear GeoJson con eventos de clic
-            gj = folium.GeoJson(
+            monto_str = f"${monto:,.0f}" if monto is not None else "N/A"
+            popup_html = f"<b>{entidad}</b><br>{num} ventas<br>Total: {monto_str}"
+
+            folium.GeoJson(
                 row['geometry'],
-                style_function=lambda x: {
-                    'fillColor': color_base,
+                style_function=lambda x, col=base_color: {
+                    'fillColor': col,
                     'color': '#B0BEC5',
                     'weight': 0.7,
-                    'fillOpacity': 0.72,
+                    'fillOpacity': 0.65,
                 },
                 highlight_function=lambda x: {
-                    'fillColor': color_click,
+                    'fillColor': click_color,
                     'color': '#000000',
                     'weight': 1.1,
-                    'fillOpacity': 0.9,
+                    'fillOpacity': 0.85,
                 },
                 tooltip=folium.Tooltip(tooltip_text, sticky=False),
-                popup=folium.Popup(popup_html, max_width=300)
-            )
-            
-            # Añadir evento de clic para cambiar el color
-            gj.add_child(folium.Popup(popup_html, max_width=300))
-            
-            # Añadir al mapa
-            gj.add_to(m)
+                popup=folium.Popup(popup_html, max_width=260),
+                zoom_on_click=True
+            ).add_to(m)
 
     return m
 
