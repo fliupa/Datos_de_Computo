@@ -126,7 +126,7 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas=None, columna_region
             clientes = pd.read_csv(clientes_path)
             df = ventas.merge(clientes[['ID_Cliente', 'Ciudad']], on='ID_Cliente', how='left')
             
-            # Mapeo ciudad -> entidad (estado)
+            # Mapeo ciudad -> estado (cobertura amplia)
             ciudad_to_entidad = {
                 'Ciudad de México': 'CIUDAD DE MÉXICO', 'Guadalajara': 'JALISCO', 'Monterrey': 'NUEVO LEÓN',
                 'Puebla': 'PUEBLA', 'Tijuana': 'BAJA CALIFORNIA', 'León': 'GUANAJUATO', 'Cancún': 'QUINTANA ROO',
@@ -141,7 +141,7 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas=None, columna_region
                 'Matamoros': 'TAMAULIPAS', 'Reynosa': 'TAMAULIPAS', 'Coatzacoalcos': 'VERACRUZ', 'Pachuca': 'HIDALGO',
                 'Cuernavaca': 'MORELOS', 'Tepic': 'NAYARIT', 'Tuxtla Gutiérrez': 'CHIAPAS', 'Xalapa': 'VERACRUZ',
                 'San Luis Potosí': 'SAN LUIS POTOSÍ', 'Gómez Palacio': 'DURANGO', 'Uruapan': 'MICHOACÁN',
-                'Ciudad Victoria': 'TAMAULIPAS'
+                'Ciudad Victoria': 'TAMAULIPAS', 'Mexicali': 'BAJA CALIFORNIA'
             }
             df['ENTIDAD'] = df['Ciudad'].map(ciudad_to_entidad)
             df['ENTIDAD'] = df['ENTIDAD'].replace(entidad_sinonimos)
@@ -318,10 +318,10 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
 def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None, 
                               color_map='pastel_soft', add_layers=False):
     """
-    Mapa interactivo minimalista que colorea por ventas por estado (pastel suave).
-    - Un solo tile base (CartoDB Positron)
-    - Solo tooltips simples con "Estado — $ventas"
-    - Paletas pastel suaves; sin popups ni capas extra
+    Mapa interactivo que colorea por valor de ventas por estado.
+    - Normaliza nombres de estado y soporta entradas por estado o por región (Norte/Centro/Sur).
+    - Si se provee `datos_ventas` con regiones, distribuye a estados por conteo de ventas (o equitativo si no hay conteos).
+    - Guarda el HTML en `data/mapa_interactivo_mexico.html` y retorna (mapa, ruta_html).
     """
     try:
         import folium
@@ -330,53 +330,60 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
         print(" [AVISO] Folium no está instalado; omitiendo mapa interactivo. Instale con: pip install folium")
         return None
 
-    bounds = gdf_mexico.total_bounds
+    import os
+    import unicodedata
+    import pandas as pd
+
+    def _norm(s):
+        s = str(s).strip().upper()
+        s = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+        return s
+
+    # Asegurar columna ENTIDAD y normalización
+    gdf_plot = gdf_mexico.copy()
+    if 'ENTIDAD' not in gdf_plot.columns:
+        if 'NOM_ENT' in gdf_plot.columns:
+            gdf_plot = gdf_plot.rename(columns={'NOM_ENT': 'ENTIDAD'})
+        elif 'name' in gdf_plot.columns:
+            gdf_plot = gdf_plot.rename(columns={'name': 'ENTIDAD'})
+        else:
+            raise ValueError("El GeoDataFrame no contiene una columna de estado ('ENTIDAD', 'NOM_ENT' o 'name').")
+
+    sinonimos = {
+        'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
+        'ESTADO DE MÉXICO': 'MÉXICO'
+    }
+    gdf_plot['ENTIDAD'] = gdf_plot['ENTIDAD'].astype(str).str.upper().replace(sinonimos)
+    gdf_plot['ENTIDAD_UP'] = gdf_plot['ENTIDAD'].map(_norm)
+    entidades_set = set(gdf_plot['ENTIDAD_UP'])
+
+    # Centro del mapa
+    bounds = gdf_plot.total_bounds
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
 
-    m = folium.Map(
-        location=[center_lat, center_lon],
-        zoom_start=5,
-        tiles='CartoDB Positron',
-        control_scale=True
-    )
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, tiles='CartoDB Positron', control_scale=True)
 
-    # Normalizar ENTIDAD para coincidencias
-    gdf_plot = gdf_mexico.copy()
-    gdf_plot['ENTIDAD'] = gdf_plot['ENTIDAD'].replace({
-        'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
-        'ESTADO DE MÉXICO': 'MÉXICO'
-    })
-    gdf_plot['ENTIDAD_UP'] = gdf_plot['ENTIDAD'].astype(str).str.upper()
-
-    # Métricas de ventas por estado desde CSV (conteo y monto)
+    # Métricas desde CSV para tooltips (conteo y monto por estado)
     num_ventas_estado = {}
     monto_ventas_estado = {}
     try:
-        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # .../temas c
+        # Intentar rutas en el proyecto actual
         ventas_candidates = [
-            os.path.join(root_dir, 'ventas.csv'),
-            os.path.join(root_dir, 'prueba1', 'tarea 2', 'ventas.csv')
+            os.path.join(os.getcwd(), 'ventas.csv'),
+            os.path.join(os.getcwd(), 'data', 'ventas.csv')
         ]
         clientes_candidates = [
-            os.path.join(root_dir, 'clientes.csv'),
-            os.path.join(root_dir, 'prueba1', 'tarea 2', 'clientes.csv')
+            os.path.join(os.getcwd(), 'clientes.csv'),
+            os.path.join(os.getcwd(), 'data', 'clientes.csv')
         ]
         ventas_path = next((p for p in ventas_candidates if os.path.exists(p)), None)
         clientes_path = next((p for p in clientes_candidates if os.path.exists(p)), None)
-
         if ventas_path and clientes_path:
             v = pd.read_csv(ventas_path)
             c = pd.read_csv(clientes_path)
-
-            # Merge para obtener Ciudad por cliente
-            merge_col = 'ID_Cliente' if 'ID_Cliente' in v.columns else ('cliente_id' if 'cliente_id' in v.columns else None)
-            if merge_col:
-                df_v = v.merge(c[['ID_Cliente', 'Ciudad']], left_on=merge_col, right_on='ID_Cliente', how='left')
-            else:
-                df_v = v.copy()
-
-            # Mapeo Ciudad -> Estado (cobertura amplia)
+            merge_col = next((col for col in ['ID_Cliente','cliente_id','id_cliente','Cliente_ID'] if col in v.columns), None)
+            df_v = v.merge(c[['ID_Cliente','Ciudad']], left_on=merge_col, right_on='ID_Cliente', how='left') if merge_col else v.copy()
             ciudad_to_entidad = {
                 'Ciudad de México': 'CIUDAD DE MÉXICO', 'Guadalajara': 'JALISCO', 'Monterrey': 'NUEVO LEÓN',
                 'Puebla': 'PUEBLA', 'Tijuana': 'BAJA CALIFORNIA', 'León': 'GUANAJUATO', 'Cancún': 'QUINTANA ROO',
@@ -393,111 +400,129 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                 'San Luis Potosí': 'SAN LUIS POTOSÍ', 'Gómez Palacio': 'DURANGO', 'Uruapan': 'MICHOACÁN',
                 'Ciudad Victoria': 'TAMAULIPAS', 'Mexicali': 'BAJA CALIFORNIA'
             }
-
             if 'Ciudad' in df_v.columns:
                 df_v['ENTIDAD'] = df_v['Ciudad'].map(ciudad_to_entidad)
-                df_v['ENTIDAD_UP'] = df_v['ENTIDAD'].astype(str).str.upper().replace({
-                    'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
-                    'ESTADO DE MÉXICO': 'MÉXICO'
-                })
-
-                # Conteo de ventas por estado
+                df_v['ENTIDAD_UP'] = df_v['ENTIDAD'].astype(str).str.upper().replace(sinonimos).map(_norm)
                 num_ventas_estado = df_v.dropna(subset=['ENTIDAD_UP'])['ENTIDAD_UP'].value_counts().to_dict()
-
-                # Detección de columna de monto
-                value_candidates = ['Total', 'total', 'Monto', 'monto', 'Importe', 'importe', 'Ingresos_Total', 'ingresos_total', 'Total_Ventas', 'total_ventas']
+                value_candidates = ['Total','total','Monto','monto','Importe','importe','Ingresos_Total','ingresos_total','Total_Ventas','total_ventas']
                 col_valor = next((col for col in value_candidates if col in df_v.columns), None)
                 if col_valor:
                     monto_ventas_estado = df_v.dropna(subset=['ENTIDAD_UP']).groupby('ENTIDAD_UP')[col_valor].sum().to_dict()
     except Exception:
-        # Si falla, dejamos los diccionarios vacíos y el tooltip usa solo el nombre
         pass
 
+    # Construir valores por estado
+    valores_por_estado = {}
+
+    region_aliases = {
+        'NORTE': 'NORTE', 'NORTH': 'NORTE', 'NORTH_MEXICO': 'NORTE', 'NORTH MEXICO': 'NORTE',
+        'CENTRO': 'CENTRO', 'CENTRAL': 'CENTRO', 'CENTRAL_MEXICO': 'CENTRO', 'CENTRAL MEXICO': 'CENTRO',
+        'SUR': 'SUR', 'SOUTH': 'SUR', 'SOUTH_MEXICO': 'SUR', 'SOUTH MEXICO': 'SUR'
+    }
+    regiones_a_estados = {
+        'NORTE': ['BAJA CALIFORNIA', 'BAJA CALIFORNIA SUR', 'SONORA', 'CHIHUAHUA', 'COAHUILA', 'NUEVO LEÓN', 'TAMAULIPAS', 'SINALOA', 'DURANGO'],
+        'CENTRO': ['AGUASCALIENTES', 'ZACATECAS', 'SAN LUIS POTOSÍ', 'GUANAJUATO', 'QUERÉTARO', 'HIDALGO', 'MÉXICO', 'CIUDAD DE MÉXICO', 'MORELOS', 'TLAXCALA', 'PUEBLA', 'MICHOACÁN'],
+        'SUR': ['JALISCO', 'COLIMA', 'NAYARIT', 'VERACRUZ', 'GUERRERO', 'OAXACA', 'CHIAPAS', 'TABASCO', 'CAMPECHE', 'YUCATÁN', 'QUINTANA ROO']
+    }
+
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
-        # Tomar ventas por estado directamente
         df = datos_ventas.copy()
-        df['__ESTADO_UP'] = df[columna_region].astype(str).str.strip().str.upper().replace({
-            'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
-            'ESTADO DE MÉXICO': 'MÉXICO'
-        })
-        valores_estado = dict(zip(df['__ESTADO_UP'], df[columna_valor]))
-
-        base_color = '#8BDDF1'
-        click_color = '#F18BAA'
-
-        for _, row in gdf_plot.iterrows():
-            entidad = row['ENTIDAD']
-            entidad_up = row['ENTIDAD_UP']
-            valor = valores_estado.get(entidad_up, None)
-
-            # Métricas para tooltip y popup
-            num = num_ventas_estado.get(entidad_up, 0)
-            monto = valor if valor is not None else monto_ventas_estado.get(entidad_up, None)
-            tooltip_text = (
-                f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
-                f"{entidad} — {num} ventas" if (num > 0) else
-                f"{entidad} — ${monto:,.0f}" if (monto is not None) else
-                entidad
-            )
-            monto_str = f"${monto:,.0f}" if monto is not None else "N/A"
-            popup_html = f"<b>{entidad}</b><br>{num} ventas<br>Total: {monto_str}"
-
-            folium.GeoJson(
-                row['geometry'],
-                style_function=lambda x, col=base_color: {
-                    'fillColor': col,
-                    'color': '#B0BEC5',
-                    'weight': 0.7,
-                    'fillOpacity': 0.72,
-                },
-                highlight_function=lambda x: {
-                    'fillColor': click_color,
-                    'color': '#000000',
-                    'weight': 1.1,
-                    'fillOpacity': 0.9,
-                },
-                tooltip=folium.Tooltip(tooltip_text, sticky=False),
-                popup=folium.Popup(popup_html, max_width=260),
-                zoom_on_click=True
-            ).add_to(m)
+        df['__KEY'] = df[columna_region].map(_norm).replace(sinonimos)
+        df['__VAL'] = pd.to_numeric(df[columna_valor], errors='coerce').fillna(0)
+        # ¿Son estados o regiones?
+        keys = set(df['__KEY'].unique())
+        es_estado = any(k in entidades_set for k in keys)
+        if es_estado:
+            for _, r in df.iterrows():
+                k = r['__KEY']
+                if k in entidades_set:
+                    valores_por_estado[k] = float(r['__VAL'])
+        else:
+            # Distribuir por región
+            for _, r in df.iterrows():
+                rk = region_aliases.get(r['__KEY'], r['__KEY'])
+                if rk in regiones_a_estados:
+                    estados_r = [ _norm(s) for s in regiones_a_estados[rk] ]
+                    # Pesos por conteo de ventas
+                    pesos = [ num_ventas_estado.get(_norm(s), 0) for s in regiones_a_estados[rk] ]
+                    total_pesos = sum(pesos)
+                    if total_pesos == 0:
+                        # Reparto equitativo
+                        reparto = r['__VAL'] / len(estados_r)
+                        for est_up in estados_r:
+                            valores_por_estado[est_up] = valores_por_estado.get(est_up, 0) + reparto
+                    else:
+                        for est_up, p in zip(estados_r, pesos):
+                            valores_por_estado[est_up] = valores_por_estado.get(est_up, 0) + (r['__VAL'] * (p / total_pesos))
     else:
-        # Sin datos: color base fijo y métricas en popup/tooltip
-        base_color = '#8BDDF1'
-        click_color = '#F18BAA'
-        for _, row in gdf_plot.iterrows():
-            entidad = row['ENTIDAD']
-            entidad_up = row['ENTIDAD_UP']
-            num = num_ventas_estado.get(entidad_up, 0)
-            monto = monto_ventas_estado.get(entidad_up, None)
-            tooltip_text = (
-                f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
-                f"{entidad} — {num} ventas" if (num > 0) else
-                f"{entidad} — ${monto:,.0f}" if (monto is not None) else
-                entidad
-            )
-            monto_str = f"${monto:,.0f}" if monto is not None else "N/A"
-            popup_html = f"<b>{entidad}</b><br>{num} ventas<br>Total: {monto_str}"
+        # Fallback: usar montos desde CSV si existen
+        valores_por_estado = monto_ventas_estado.copy()
 
-            folium.GeoJson(
-                row['geometry'],
-                style_function=lambda x, col=base_color: {
-                    'fillColor': col,
-                    'color': '#B0BEC5',
-                    'weight': 0.7,
-                    'fillOpacity': 0.65,
-                },
-                highlight_function=lambda x: {
-                    'fillColor': click_color,
-                    'color': '#000000',
-                    'weight': 1.1,
-                    'fillOpacity': 0.85,
-                },
-                tooltip=folium.Tooltip(tooltip_text, sticky=False),
-                popup=folium.Popup(popup_html, max_width=260),
-                zoom_on_click=True
-            ).add_to(m)
+    # Colores pastel suaves
+    palettes = {
+        'pastel_soft': ['#faf3dd','#ffc6ff','#caffbf','#a0c4ff','#bdb2ff'],
+        'pastel_warm': ['#ffe5d9','#ffcad4','#f4acb7','#9d8189','#f7d6e0'],
+        'pastel_ocean': ['#e0fbfc','#c2dfe3','#9db4c0','#5c6b73','#253237']
+    }
+    colors = palettes.get(color_map, palettes['pastel_soft'])
 
-    return m
+    vals = list(valores_por_estado.values())
+    vals = [v for v in vals if pd.notna(v)]
+    vmin = min(vals) if vals else 0
+    vmax = max(vals) if vals else 1
+    if vmin == vmax:
+        vmax = vmin + 1
+    colormap = LinearColormap(colors, vmin=vmin, vmax=vmax)
+    colormap.caption = 'Ventas por estado'
+    colormap.add_to(m)
+
+    # Pintar estados con colores por valor
+    base_border = '#B0BEC5'
+    for _, row in gdf_plot.iterrows():
+        entidad = row['ENTIDAD']
+        entidad_up = row['ENTIDAD_UP']
+        valor = valores_por_estado.get(entidad_up, 0)
+        num = num_ventas_estado.get(entidad_up, 0)
+        monto = valor if valor else monto_ventas_estado.get(entidad_up, None)
+        color = colormap(valor) if (valor is not None) else '#ECEFF4'
+        tooltip_text = (
+            f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
+            f"{entidad} — {num} ventas" if (num > 0) else
+            f"{entidad} — ${monto:,.0f}" if (monto is not None) else
+            entidad
+        )
+        popup_html = f"<b>{entidad}</b><br>{num} ventas<br>Total: {monto if monto is not None else 'N/A'}"
+
+        folium.GeoJson(
+            row['geometry'],
+            style_function=lambda x, col=color: {
+                'fillColor': col,
+                'color': base_border,
+                'weight': 0.8,
+                'fillOpacity': 0.75,
+            },
+            highlight_function=lambda x: {
+                'fillColor': '#000000',
+                'color': '#000000',
+                'weight': 1.1,
+                'fillOpacity': 0.9,
+            },
+            tooltip=folium.Tooltip(tooltip_text, sticky=False),
+            popup=folium.Popup(popup_html, max_width=300),
+            zoom_on_click=True
+        ).add_to(m)
+
+    # Guardar HTML para visualización fiable en notebook
+    out_dir = os.path.join(os.getcwd(), 'data')
+    os.makedirs(out_dir, exist_ok=True)
+    html_out = os.path.join(out_dir, 'mapa_interactivo_mexico.html')
+    try:
+        m.save(html_out)
+    except Exception as e:
+        print(f" [AVISO] No se pudo guardar el mapa en HTML: {e}")
+        html_out = None
+
+    return m, html_out
 
 # ----------------------
 # Utilidades integradas
