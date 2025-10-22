@@ -463,7 +463,6 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     try:
         if datos_ventas is not None and columna_region is not None:
             df_nv = datos_ventas.copy()
-            col_nv = columna_num_ventas
             if col_nv is None:
                 # Detecta automáticamente 'Num_Ventas' o 'num_ventas'
                 if 'Num_Ventas' in df_nv.columns:
