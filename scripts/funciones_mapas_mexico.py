@@ -315,12 +315,13 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     
     return fig, ax
 
-def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None, 
-                              color_map='pastel_soft', add_layers=False):
+def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=None, columna_valor=None,
+                                  color_map='pastel_soft', add_layers=False, columna_num_ventas=Num_Ventas):
     """
     Mapa interactivo que colorea por valor de ventas por estado.
     - Normaliza nombres de estado y soporta entradas por estado o por región (Norte/Centro/Sur).
-    - Si se provee `datos_ventas` con regiones, distribuye a estados por conteo de ventas (o equitativo si no hay conteos).
+    - Si se provee `datos_ventas`, usa `columna_valor` para colorear y `columna_num_ventas` (p. ej. 'Num_Ventas' o 'num_ventas')
+      para mostrar el número de ventas en el tooltip. Si los datos son por región, se distribuye equitativamente a los estados.
     - Guarda el HTML en `data/mapa_interactivo_mexico.html` y retorna (mapa, ruta_html).
     """
     try:
@@ -457,6 +458,43 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     else:
         # Fallback: usar montos desde CSV si existen
         valores_por_estado = monto_ventas_estado.copy()
+
+    # Si se proporciona una columna de número de ventas, construir num_ventas_estado desde datos_ventas
+    try:
+        if datos_ventas is not None and columna_region is not None:
+            df_nv = datos_ventas.copy()
+            col_nv = columna_num_ventas
+            if col_nv is None:
+                # Detecta automáticamente 'Num_Ventas' o 'num_ventas'
+                if 'Num_Ventas' in df_nv.columns:
+                    col_nv = 'Num_Ventas'
+                elif 'num_ventas' in df_nv.columns:
+                    col_nv = 'num_ventas'
+            if col_nv and col_nv in df_nv.columns:
+                df_nv['__KEY'] = df_nv[columna_region].map(_norm).replace(sinonimos)
+                df_nv['__NV'] = pd.to_numeric(df_nv[col_nv], errors='coerce').fillna(0)
+                keys_nv = set(df_nv['__KEY'].unique())
+                es_estado_nv = any(k in entidades_set for k in keys_nv)
+                tmp_nv_por_estado = {}
+                if es_estado_nv:
+                    for _, r in df_nv.iterrows():
+                        k = r['__KEY']
+                        if k in entidades_set:
+                            tmp_nv_por_estado[k] = tmp_nv_por_estado.get(k, 0) + float(r['__NV'])
+                else:
+                    for _, r in df_nv.iterrows():
+                        rk = region_aliases.get(r['__KEY'], r['__KEY'])
+                        if rk in regiones_a_estados:
+                            estados_r = [ _norm(s) for s in regiones_a_estados[rk] ]
+                            if len(estados_r) > 0:
+                                reparto = float(r['__NV']) / len(estados_r)
+                                for est_up in estados_r:
+                                    tmp_nv_por_estado[est_up] = tmp_nv_por_estado.get(est_up, 0) + reparto
+                # Sobrescribe conteos si se pudo construir
+                if tmp_nv_por_estado:
+                    num_ventas_estado = tmp_nv_por_estado
+    except Exception:
+        pass
 
     # Colores pastel suaves
     palettes = {
