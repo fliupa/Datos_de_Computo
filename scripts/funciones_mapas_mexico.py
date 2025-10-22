@@ -11,6 +11,7 @@ import contextily as ctx
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
+import os
 
 def cargar_geojson_mexico(ruta_geojson):
     """
@@ -58,14 +59,7 @@ def crear_mapa_base_mexico(gdf_mexico, titulo="Mapa de México", figsize=(12, 8)
     
     # Configurar el mapa con estilo más vibrante
     ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    
-    # Remover los ticks para un aspecto más limpio con colores vibrantes
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    
-    # Agregar grid sutil con color vibrante
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
+    ax.set_axis_off()
     ax.set_facecolor('#F8F9FA')  # Fondo ligeramente gris para contraste
     
     return fig, ax
@@ -189,10 +183,7 @@ def crear_mapa_coroplético_ventas(gdf_mexico, datos_ventas=None, columna_region
     
     # Estilo del mapa
     ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
+    ax.set_axis_off()
     ax.set_facecolor('#F8F9FA')
     
     return fig, ax
@@ -308,10 +299,7 @@ def crear_mapa_ciudades_principales(gdf_mexico, datos_ciudades, titulo="Principa
     
     # Configurar el mapa con estilo más vibrante
     ax.set_title(titulo, fontsize=18, fontweight='bold', pad=25, color='#2C3E50')
-    ax.set_xlabel('Longitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.set_ylabel('Latitud', fontsize=14, fontweight='bold', color='#34495E')
-    ax.tick_params(axis='both', which='major', labelsize=11, colors='#2C3E50')
-    ax.grid(True, alpha=0.4, linestyle='--', color='#7F8C8D')
+    ax.set_axis_off()
     ax.set_facecolor('#F8F9FA')  # Fondo ligeramente gris para contraste
     
     # Crear leyenda para los marcadores
@@ -361,6 +349,70 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
     })
     gdf_plot['ENTIDAD_UP'] = gdf_plot['ENTIDAD'].astype(str).str.upper()
 
+    # Métricas de ventas por estado desde CSV (conteo y monto)
+    num_ventas_estado = {}
+    monto_ventas_estado = {}
+    try:
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # .../temas c
+        ventas_candidates = [
+            os.path.join(root_dir, 'ventas.csv'),
+            os.path.join(root_dir, 'prueba1', 'tarea 2', 'ventas.csv')
+        ]
+        clientes_candidates = [
+            os.path.join(root_dir, 'clientes.csv'),
+            os.path.join(root_dir, 'prueba1', 'tarea 2', 'clientes.csv')
+        ]
+        ventas_path = next((p for p in ventas_candidates if os.path.exists(p)), None)
+        clientes_path = next((p for p in clientes_candidates if os.path.exists(p)), None)
+
+        if ventas_path and clientes_path:
+            v = pd.read_csv(ventas_path)
+            c = pd.read_csv(clientes_path)
+
+            # Merge para obtener Ciudad por cliente
+            merge_col = 'ID_Cliente' if 'ID_Cliente' in v.columns else ('cliente_id' if 'cliente_id' in v.columns else None)
+            if merge_col:
+                df_v = v.merge(c[['ID_Cliente', 'Ciudad']], left_on=merge_col, right_on='ID_Cliente', how='left')
+            else:
+                df_v = v.copy()
+
+            # Mapeo Ciudad -> Estado (cobertura amplia)
+            ciudad_to_entidad = {
+                'Ciudad de México': 'CIUDAD DE MÉXICO', 'Guadalajara': 'JALISCO', 'Monterrey': 'NUEVO LEÓN',
+                'Puebla': 'PUEBLA', 'Tijuana': 'BAJA CALIFORNIA', 'León': 'GUANAJUATO', 'Cancún': 'QUINTANA ROO',
+                'Querétaro': 'QUERÉTARO', 'Mérida': 'YUCATÁN', 'Aguascalientes': 'AGUASCALIENTES',
+                'Hermosillo': 'SONORA', 'Morelia': 'MICHOACÁN', 'Toluca': 'MÉXICO', 'Veracruz': 'VERACRUZ',
+                'Tampico': 'TAMAULIPAS', 'Culiacán': 'SINALOA', 'Mazatlán': 'SINALOA', 'Acapulco': 'GUERRERO',
+                'Saltillo': 'COAHUILA', 'Durango': 'DURANGO', 'Campeche': 'CAMPECHE', 'Oaxaca': 'OAXACA',
+                'Zacatecas': 'ZACATECAS', 'Colima': 'COLIMA', 'Tlaxcala': 'TLAXCALA', 'Ciudad Juárez': 'CHIHUAHUA',
+                'Villahermosa': 'TABASCO', 'Chetumal': 'QUINTANA ROO', 'La Paz': 'BAJA CALIFORNIA SUR',
+                'Torreón': 'COAHUILA', 'Celaya': 'GUANAJUATO', 'Irapuato': 'GUANAJUATO', 'Manzanillo': 'COLIMA',
+                'Ensenada': 'BAJA CALIFORNIA', 'Ciudad Obregón': 'SONORA', 'Nogales': 'SONORA', 'Los Mochis': 'SINALOA',
+                'Matamoros': 'TAMAULIPAS', 'Reynosa': 'TAMAULIPAS', 'Coatzacoalcos': 'VERACRUZ', 'Pachuca': 'HIDALGO',
+                'Cuernavaca': 'MORELOS', 'Tepic': 'NAYARIT', 'Tuxtla Gutiérrez': 'CHIAPAS', 'Xalapa': 'VERACRUZ',
+                'San Luis Potosí': 'SAN LUIS POTOSÍ', 'Gómez Palacio': 'DURANGO', 'Uruapan': 'MICHOACÁN',
+                'Ciudad Victoria': 'TAMAULIPAS', 'Mexicali': 'BAJA CALIFORNIA'
+            }
+
+            if 'Ciudad' in df_v.columns:
+                df_v['ENTIDAD'] = df_v['Ciudad'].map(ciudad_to_entidad)
+                df_v['ENTIDAD_UP'] = df_v['ENTIDAD'].astype(str).str.upper().replace({
+                    'DISTRITO FEDERAL': 'CIUDAD DE MÉXICO',
+                    'ESTADO DE MÉXICO': 'MÉXICO'
+                })
+
+                # Conteo de ventas por estado
+                num_ventas_estado = df_v.dropna(subset=['ENTIDAD_UP'])['ENTIDAD_UP'].value_counts().to_dict()
+
+                # Detección de columna de monto
+                value_candidates = ['Total', 'total', 'Monto', 'monto', 'Importe', 'importe', 'Ingresos_Total', 'ingresos_total', 'Total_Ventas', 'total_ventas']
+                col_valor = next((col for col in value_candidates if col in df_v.columns), None)
+                if col_valor:
+                    monto_ventas_estado = df_v.dropna(subset=['ENTIDAD_UP']).groupby('ENTIDAD_UP')[col_valor].sum().to_dict()
+    except Exception:
+        # Si falla, dejamos los diccionarios vacíos y el tooltip usa solo el nombre
+        pass
+
     if datos_ventas is not None and columna_region is not None and columna_valor is not None:
         # Tomar ventas por estado directamente
         df = datos_ventas.copy()
@@ -388,6 +440,16 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
             valor = valores_estado.get(entidad_up, None)
             color = cmap(valor if valor is not None else vmin)
 
+            # Tooltip con conteo y monto (si disponibles)
+            num = num_ventas_estado.get(entidad_up, 0)
+            monto = valor if valor is not None else monto_ventas_estado.get(entidad_up, None)
+            tooltip_text = (
+                f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
+                f"{entidad} — {num} ventas" if (num > 0) else
+                f"{entidad} — ${monto:,.0f}" if (monto is not None) else
+                entidad
+            )
+
             folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x, col=color: {
@@ -402,16 +464,23 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                     'weight': 1.1,
                     'fillOpacity': 0.9,
                 },
-                tooltip=folium.Tooltip(
-                    f"{entidad} — ${valor:,.0f}" if valor is not None else entidad,
-                    sticky=False
-                )
+                tooltip=folium.Tooltip(tooltip_text, sticky=False)
             ).add_to(m)
     else:
         # Sin datos: relleno neutro y tooltip con nombre del estado
         neutral_fill = '#eaeaea'
         for _, row in gdf_plot.iterrows():
             entidad = row['ENTIDAD']
+            entidad_up = row['ENTIDAD_UP']
+            num = num_ventas_estado.get(entidad_up, 0)
+            monto = monto_ventas_estado.get(entidad_up, None)
+            tooltip_text = (
+                f"{entidad} — {num} ventas — ${monto:,.0f}" if (monto is not None and num > 0) else
+                f"{entidad} — {num} ventas" if (num > 0) else
+                f"{entidad} — ${monto:,.0f}" if (monto is not None) else
+                entidad
+            )
+
             folium.GeoJson(
                 row['geometry'],
                 style_function=lambda x: {
@@ -426,7 +495,7 @@ def crear_mapa_interactivo_folium(gdf_mexico, datos_ventas=None, columna_region=
                     'weight': 1.1,
                     'fillOpacity': 0.85,
                 },
-                tooltip=folium.Tooltip(entidad, sticky=False)
+                tooltip=folium.Tooltip(tooltip_text, sticky=False)
             ).add_to(m)
 
     return m
