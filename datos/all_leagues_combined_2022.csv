@@ -1,0 +1,99 @@
+club_id,team,position,points,squad,avg_age,foreigners,avg_market_value,total_market_value,league
+27,Bayern Munich,1,71,35,25.7,22,€27.11m,€948.95m,bundesliga
+16,Dortmund,2,71,37,25.1,19,€15.34m,€567.55m,bundesliga
+23826,Leipzig,3,66,29,26.0,19,€16.77m,€486.40m,bundesliga
+89,Union Berlin,4,62,36,27.4,17,€4.39m,€157.95m,bundesliga
+60,Freiburg,5,59,29,26.5,11,€6.93m,€200.95m,bundesliga
+15,Leverkusen,6,50,35,24.8,25,€12.93m,€452.50m,bundesliga
+24,Frankfurt,7,50,36,25.6,22,€9.02m,€324.55m,bundesliga
+82,Wolfsburg,8,49,33,25.1,20,€7.22m,€238.30m,bundesliga
+39,Mainz,9,46,34,25.2,17,€3.99m,€135.80m,bundesliga
+18,Mönchengladbach,10,43,35,25.9,16,€6.91m,€241.68m,bundesliga
+3,1.FC Köln,11,42,39,25.4,16,€2.97m,€115.65m,bundesliga
+533,Hoffenheim,12,36,37,26.2,22,€4.83m,€178.80m,bundesliga
+86,Werder Bremen,13,36,33,25.2,12,€2.71m,€89.50m,bundesliga
+80,VfL Bochum,14,35,32,28.3,18,€1.68m,€53.70m,bundesliga
+167,Augsburg,15,34,42,25.6,25,€3.15m,€132.23m,bundesliga
+79,Stuttgart,16,33,39,23.7,23,€3.87m,€151.05m,bundesliga
+33,FC Schalke 04,17,31,43,26.9,22,€2.04m,€87.78m,bundesliga
+44,Hertha BSC,18,29,41,25.8,24,€2.29m,€94.00m,bundesliga
+131,Barcelona,1,88,41,24.4,14,€20.41m,€836.80m,laliga
+418,Real Madrid,2,78,36,25.9,20,€25.65m,€923.45m,laliga
+13,Atlético,3,77,40,25.8,22,€13.36m,€534.30m,laliga
+681,Real Sociedad,4,71,37,25.0,6,€11.94m,€441.70m,laliga
+1050,Villarreal,5,64,43,26.4,15,€8.45m,€363.50m,laliga
+150,Real Betis,6,60,38,27.6,13,€6.48m,€246.40m,laliga
+331,CA Osasuna,7,53,31,27.2,4,€4.84m,€150.05m,laliga
+621,Athletic Club,8,51,31,27.1,1,€7.18m,€222.45m,laliga
+237,RCD Mallorca,9,50,38,26.9,19,€2.82m,€107.00m,laliga
+12321,Girona,10,49,37,25.6,13,€3.78m,€139.90m,laliga
+368,Sevilla FC,11,49,42,26.8,23,€5.54m,€232.58m,laliga
+367,Rayo Vallecano,12,49,29,28.7,10,€3.57m,€103.40m,laliga
+940,Celta de Vigo,13,43,36,25.7,12,€3.86m,€138.80m,laliga
+1049,Valencia,14,42,40,24.5,18,€6.24m,€249.78m,laliga
+3709,Getafe,15,42,34,26.5,14,€3.50m,€118.90m,laliga
+2687,Cádiz CF,16,42,47,27.3,17,€1.40m,€65.60m,laliga
+3302,UD Almería,17,41,36,25.9,18,€3.17m,€114.20m,laliga
+366,Real Valladolid,18,40,41,26.8,18,€2.21m,€90.75m,laliga
+714,Espanyol,19,37,37,25.9,11,€3.15m,€116.50m,laliga
+1531,Elche CF,20,25,40,27.0,17,€1.69m,€67.50m,laliga
+281,Man City,1,89,34,26.0,21,€33.70m,€1.15bn,premier_league
+11,Arsenal,2,84,42,24.0,25,€23.83m,€1.00bn,premier_league
+985,Man Utd,3,75,48,25.4,30,€17.66m,€847.75m,premier_league
+762,Newcastle,4,71,38,28.3,22,€14.25m,€541.60m,premier_league
+31,Liverpool,5,67,39,25.6,24,€20.82m,€811.85m,premier_league
+1237,Brighton,6,62,42,24.1,28,€12.61m,€529.80m,premier_league
+405,Aston Villa,7,61,43,25.4,23,€11.85m,€509.55m,premier_league
+148,Tottenham,8,60,34,25.9,21,€19.09m,€649.10m,premier_league
+1148,Brentford,9,59,36,25.3,27,€10.31m,€371.20m,premier_league
+931,Fulham,10,52,47,25.9,35,€6.28m,€295.10m,premier_league
+873,Crystal Palace,11,45,39,25.4,20,€8.28m,€323.05m,premier_league
+631,Chelsea,12,44,43,25.2,27,€23.14m,€994.95m,premier_league
+543,Wolves,13,41,43,25.8,34,€11.57m,€497.65m,premier_league
+379,West Ham,14,40,44,25.4,25,€10.58m,€465.60m,premier_league
+989,Bournemouth,15,39,47,25.0,23,€6.11m,€287.20m,premier_league
+703,Nott'm Forest,16,38,50,26.6,29,€7.53m,€376.25m,premier_league
+29,Everton,17,36,40,26.9,21,€10.33m,€413.15m,premier_league
+1003,Leicester,18,34,38,26.4,25,€12.91m,€490.70m,premier_league
+399,Leeds,19,31,47,24.0,31,€7.34m,€345.15m,premier_league
+180,Southampton,20,25,46,24.8,25,€9.13m,€419.95m,premier_league
+583,PSG,1,85,37,25.9,24,€24.08m,€891.10m,ligue1
+826,Lens,2,84,39,25.4,23,€6.11m,€238.20m,ligue1
+244,Marseille,3,73,37,25.6,29,€8.96m,€331.55m,ligue1
+273,Stade Rennais,4,68,38,24.3,19,€10.20m,€387.75m,ligue1
+1082,Lille,5,67,33,25.3,21,€7.51m,€247.95m,ligue1
+162,Monaco,6,65,32,24.3,18,€11.51m,€368.30m,ligue1
+1041,Lyon,7,62,34,25.5,17,€10.32m,€350.95m,ligue1
+3524,Clermont Foot,8,59,33,26.3,21,€1.45m,€48.00m,ligue1
+417,Nice,9,58,41,24.3,28,€7.58m,€310.80m,ligue1
+1158,FC Lorient,10,55,42,24.6,17,€4.18m,€175.45m,ligue1
+1421,Stade Reims,11,51,40,23.8,30,€3.98m,€159.05m,ligue1
+969,Montpellier,12,50,39,25.1,19,€3.66m,€142.90m,ligue1
+415,Toulouse,13,48,37,24.0,30,€2.83m,€104.80m,ligue1
+3911,Stade Brestois,14,44,32,26.3,16,€2.40m,€76.65m,ligue1
+667,R. Strasbourg,15,40,36,26.0,17,€3.43m,€123.55m,ligue1
+995,FC Nantes,16,36,37,26.0,20,€3.22m,€119.28m,ligue1
+290,AJ Auxerre,17,35,42,26.5,19,€1.30m,€54.80m,ligue1
+1147,AC Ajaccio,18,26,41,27.1,24,€659k,€27.00m,ligue1
+1095,Troyes,19,24,41,24.9,21,€1.86m,€76.30m,ligue1
+1420,Angers SCO,20,18,44,25.1,24,€1.63m,€71.80m,ligue1
+6195,Napoli,1,90,31,26.7,20,€21.10m,€654.08m,serie_a
+398,Lazio,2,74,33,26.5,20,€8.07m,€266.43m,serie_a
+46,Inter,3,72,35,26.9,22,€16.22m,€567.55m,serie_a
+5,AC Milan,4,70,36,26.4,27,€15.14m,€545.10m,serie_a
+800,Atalanta,5,64,38,24.9,20,€8.90m,€338.38m,serie_a
+12,Roma,6,63,47,24.2,27,€7.69m,€361.38m,serie_a
+506,Juventus,7,62,40,25.9,19,€12.08m,€483.13m,serie_a
+430,Fiorentina,8,56,38,25.6,18,€6.81m,€258.80m,serie_a
+1025,Bologna,9,54,38,25.3,22,€4.04m,€153.63m,serie_a
+416,Torino,10,53,38,24.3,29,€5.19m,€197.19m,serie_a
+2919,Monza,11,52,41,26.6,12,€3.31m,€135.70m,serie_a
+410,Udinese,12,46,38,25.3,28,€4.97m,€188.86m,serie_a
+6574,Sassuolo,13,45,35,25.4,19,€6.63m,€232.20m,serie_a
+749,FC Empoli,14,43,44,24.8,19,€2.85m,€125.53m,serie_a
+380,Salernitana,15,42,45,26.9,27,€2.63m,€118.35m,serie_a
+1005,Lecce,16,36,39,25.1,23,€2.70m,€105.20m,serie_a
+3522,Spezia Calcio,17,31,48,24.9,34,€2.41m,€115.81m,serie_a
+276,Hellas Verona,18,31,46,25.2,26,€2.69m,€123.89m,serie_a
+2239,Cremonese,19,27,42,26.2,19,€1.99m,€83.78m,serie_a
+1038,Sampdoria,20,19,48,26.4,27,€1.73m,€82.96m,serie_a
